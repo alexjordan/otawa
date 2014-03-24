@@ -122,7 +122,7 @@ op instruction (x : Patmos_instr)
       {
 	  x.action;
 	  PC = nPC;
-	  // TODO the PC is increased depending on the bundle type
+	  // TODO the PC is increased depending on the bundle/ALUl type
 	  nPC = nPC + 4;
       }
 
@@ -131,11 +131,11 @@ op Patmos_instr = Pred_fmt
 
 
 op Pred_instr = ALU_instr
-//	        | SPC_instr
-//	        | LDT_instr
-//	        | STT_instr
-//		| STC_instr
-//		| CFL_instr
+	      | SPC_instr
+	      | LDT_instr
+	      | STT_instr
+	      | STC_instr
+	      | CFL_instr
 
 
 // Predicated instructions:
@@ -155,52 +155,54 @@ op ALU_instr = ALUi_fmt
              | ALUl_fmt
              | ALU_fmt
 
-//op SPC_instr = SPC_fmt
-//
-//op LDT_instr = LDT_fmt
-//
-//op STT_instr = STT_fmt
-//
-//op STC_instr = SPC_fmt
-//
-//op CFL_instr = CFLi_fmt 
-//             | CFLr_fmt
-//
-//
+op SPC_instr = SPC_fmt
+
+op LDT_instr = LDT_fmt
+
+op STT_instr = STT_fmt
+
+op STC_instr = STC_fmt
+
+op CFL_instr = CFLi_fmt 
+             | CFLr_fmt
+
+
 op ALU_fmt = ALUr_fmt
-//           | ALUm_fmt
-//           | ALUc_fmt
-//           | ALUp_fmt
-//           | ALUb_fmt
-//	   | ALUci_fmt
-//
-//op SPC_fmt = SPCw_fmt
-//           | SPCt_fmt
-//	   | SPCf_fmt
-//
-//op STC_fmt = STCi_fmt
-//           | STCr_fmt
-//
-//op CFLr_fmt = CFLri_fmt
-//            | CFLrs_fmt
-//	    | CFLrt_fmt
-//
+           | ALUm_fmt
+           | ALUc_fmt
+	   | ALUci_fmt
+           | ALUp_fmt
+           | ALUb_fmt
+
+op SPC_fmt = SPCt_fmt
+           | SPCf_fmt
+	   | SPCw_fmt
+
+op STC_fmt = STCi_fmt
+           | STCr_fmt
+
+op CFLr_fmt = CFLri_fmt
+            | CFLrs_fmt
+	    | CFLrt_fmt
+
 
 
 op ALU_op(opc: card(3))
   syntax = 
       switch (opc)
       {
-	case 0:  "add"
-	case 1:  "sub"
-	case 2:  "xor"
-	case 3:  "sl"
-	case 4:  "sr"
-	case 5:  "sra"
-	case 6:  "or"
-	case 7:  "and"
+	case 0:  "add   "
+	case 1:  "sub   "
+	case 2:  "xor   "
+	case 3:  "sl    "
+	case 4:  "sr    "
+	case 5:  "sra   "
+	case 6:  "or    "
+	case 7:  "and   "
       }
   image = format("%3b", opc)
+  // True if this is a 'add' opcode
+  is_add = (opc == 0)
   // True if this is a 'sub' opcode
   is_sub = (opc == 1)
 
@@ -208,29 +210,80 @@ op ALU_extop(opc: card(4))
   syntax = 
       switch (opc)
       {
-	case 0:  "add"
-	case 1:  "sub"
-	case 2:  "xor"
-	case 3:  "sl"
-	case 4:  "sr"
-	case 5:  "sra"
-	case 6:  "or"
-	case 7:  "and"
-	case 11:  "nor"
-	case 12:  "shadd"
+	case 0:   "add   "
+	case 1:   "sub   "
+	case 2:   "xor   "
+	case 3:   "sl    "
+	case 4:   "sr    "
+	case 5:   "sra   "
+	case 6:   "or    "
+	case 7:   "and   "
+	case 11:  "nor   "
+	case 12:  "shadd "
 	case 13:  "shadd2"
-	default: "undef!"
+	default:  "undef!"
       }
   image = format("%4b", opc)
   // True if this is a 'sub' opcode
   is_sub = (opc == 1)
 
+op ALUm_op(opc: card(4))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "mul   "
+	case 1:  "mulu  "
+	default: "undef!"
+      }
+  image = format("%4b", opc)
+
+op ALUc_op(opc: card(4))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "cmpeq "
+	case 1:  "cmpneq"
+	case 2:  "cmplt "
+	case 3:  "cmple "
+	case 4:  "cmpult"
+	case 5:  "cmpule"
+	case 6:  "btest "
+	default: "undef!"
+      }
+  image = format("%4b", opc)
+
+op ALUp_op(opc: card(4))
+  syntax = 
+      switch (opc)
+      {
+	case 6:  "por   "
+	case 7:  "pand  "
+	case 10: "pxor  "
+	default: "undef!"
+      }
+  image = format("%4b", opc)
 
 op ALUi_fmt(func: ALU_op, rd: reg_idx, rs1: reg_idx, imm12: card(12))
-  syntax = if func.is_sub && rd.is_zero && rs1.is_zero && imm12 == 0 then
-             "nop"
+  syntax = if func.is_sub && rs1.is_zero then
+             if rd.is_zero && imm12 == 0 then
+               "nop"
+	     else
+	       format("li    %s = -%d", rd, imm12)
+	     endif
 	   else
-             format("%s %s = %s, %d", func, rd, rs1, imm12)
+	     if func.is_add && rs1.is_zero && imm12 == 0 then
+	       format("clr    %s", rd)
+	     else
+	       if func.is_add && rs1.is_zero then
+		 format("li     %s = %d", rd, imm12)
+	       else
+		 if func.is_add && imm12 == 0 then
+		   format("mov    %s = %s", rd, rs1)
+		 else
+		   format("%s %s = %s, %d", func, rd, rs1, imm12)
+		 endif
+	       endif
+	     endif
 	   endif
   image = format("00 %s %s %s %12b", func, rd, rs1, imm12)
   action = { }
@@ -243,6 +296,209 @@ op ALUl_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, imm32: card(32))
 op ALUr_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, rs2: reg_idx)
   syntax = format("%s %s = %s, %s", func, rd, rs1, rs2)
   image = format("01000 %s %s %s 000 %s", rd, rs1, rs2, func)
+  action = { }
+
+op ALUm_fmt(func: ALUm_op, rs1: reg_idx, rs2: reg_idx)
+  syntax = format("%s %s, %s", func, rs1, rs2)
+  image = format("01000 XXXXX %s %s 010 %s", rs1, rs2, func)
+  action = { }
+
+op ALUc_fmt(func: ALUc_op, pd: pred_idx, rs1: reg_idx, rs2: reg_idx)
+  syntax = format("%s %s = %s, %s", func, pd, rs1, rs2)
+  image = format("01000 XX %s %s %s 011 %s", pd, rs1, rs2, func)
+  action = { }
+
+op ALUci_fmt(func: ALUc_op, pd: pred_idx, rs1: reg_idx, imm5: card(5))
+  syntax = format("%s %s = %s, %d", func, pd, rs1, imm5)
+  image = format("01000 XX %s %s %5b 110 %s", pd, rs1, imm5, func)
+  action = { }
+
+op ALUp_fmt(func: ALUp_op, pd: pred_idx, ps1: npred_idx, ps2: npred_idx)
+  syntax = format("%s %s = %s, %s", func, pd, ps1, ps2)
+  image = format("01000 XX %s X %s X %s 100 %s", pd, ps1, ps2, func)
+  action = { }
+
+op ALUb_fmt(rd: reg_idx, rs1: reg_idx, imm5: card(5), ps: npred_idx)
+  syntax = format("bcopy  %s = %s, %d, %s", rd, rs1, imm5, ps)
+  image = format("01000 %s %s %5b 101 %s", rd, rs1, imm5, ps)
+  action = { }
+
+
+
+op SPCw_op(opc: card(4))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "wait.mem"
+	default: "undef!"
+      }
+  image = format("%4b", opc)
+
+op SPCw_fmt(func: SPCw_op)
+  syntax = format("%s", func)
+  image = format("01001 XXXXXXXXXXXXXXX 001 %s", func)
+  action = { }
+
+op SPCt_fmt(rs1: reg_idx, sd: sreg_idx)
+  syntax = format("mts    %s = %s", sd, rs1)
+  image = format("01001 XXXXX %s XXXXX 010 %s", rs1, sd)
+  action = { }
+
+op SPCf_fmt(rd: reg_idx, ss: sreg_idx)
+  syntax = format("mfs    %s = %s", rd, ss)
+  image = format("01001 %s XXXXX XXXXX 011 %s", rd, ss)
+  action = { }
+
+
+op LDT_op(opc: card(5))
+  syntax = 
+      switch (opc)
+      {
+	case  0: "lws   "
+	case  1: "lwl   "
+	case  2: "lwc   "
+	case  3: "lwm   "
+	case  4: "lhs   "
+	case  5: "lhl   "
+	case  6: "lhc   "
+	case  7: "lhm   "
+	case  8: "lbs   "
+	case  9: "lbl   "
+	case 10: "lbc   "
+	case 11: "lbm   "
+	case 12: "lhus  "
+	case 13: "lhul  "
+	case 14: "lhuc  "
+	case 15: "lhum  "
+	case 16: "lbus  "
+	case 17: "lbul  "
+	case 18: "lbuc  "
+	case 19: "lbum  "
+	case 20: "dlwc  "
+	case 21: "dlwm  "
+	case 22: "dlhc  "
+	case 23: "dlhm  "
+	case 24: "dlbc  "
+	case 25: "dlbm  "
+	case 26: "dlhuc "
+	case 27: "dlhum "
+	case 28: "dlbuc "
+	case 29: "dlbum "
+	default: "undef!"
+      }
+  image = format("%5b", opc)
+
+op STT_op(opc: card(5))
+  syntax = 
+      switch (opc)
+      {
+  case  0: "sws   "
+	case  1: "swl   "
+	case  2: "swc   "
+	case  3: "swm   "
+	case  4: "shs   "
+	case  5: "shl   "
+	case  6: "shc   "
+	case  7: "shm   "
+	case  8: "sbs   "
+	case  9: "sbl   "
+	case 10: "sbc   "
+	case 11: "sbm   "
+	default: "undef!"
+      }
+  image = format("%5b", opc)
+
+
+op LDT_fmt(func: LDT_op, rd: reg_idx, ra: reg_idx, imm7: card(7))
+  syntax = if ra.is_zero then
+             format("%s %s = [%d]", func, rd, imm7)
+	   else
+	     if imm7 == 0 then
+               format("%s %s = [%s]", func, rd, ra)
+	     else
+               format("%s %s = [%s + %d]", func, rd, ra, imm7)
+	     endif
+	   endif
+  image = format("01010 %s %s %s %7b", rd, ra, func, imm7) 
+  action = { }
+
+op STT_fmt(func: STT_op, ra: reg_idx, rs: reg_idx, imm7: card(7))
+  syntax = if ra.is_zero then
+             format("%s [%d] = %s", func, imm7, rs)
+	   else
+	     if imm7 == 0 then
+               format("%s [%s] = %s", func, ra, rs)
+	     else
+               format("%s [%s + %d] = %s", func, ra, imm7, rs)
+	     endif
+	   endif
+  image = format("01011 %s %s %s %7b", func, ra, rs, imm7) 
+  action = { }
+
+
+op STC_op(opc: card(2))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "sres  "
+	case 1:  "sens  "
+	case 2:  "sfree "
+	case 3:  "sspill"
+      }
+  image = format("%2b", opc)
+
+op STCi_fmt(func: STC_op, imm18: card(18))
+  syntax = format("%s %d", func, imm18)
+  image = format("01100 %s 00 %18b", func, imm18)
+  action = { }
+
+op STCr_fmt(func: STC_op, rs: reg_idx)
+  syntax = format("%s %s", func, rs)
+  image = format("01100 %s 01 X %s XXXXX XXXXXXX", func, rs)
+  action = { }
+
+
+
+op CFL_op(opc: card(2))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "call"
+	case 1:  "br"
+	case 2:  "brcf"
+	case 3:  "trap"
+      }
+  image = format("%2b", opc)
+
+
+op CFLret_op(opc: card(2))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "ret"
+	case 1:  "xret"
+	default: "undef!"
+      }
+  image = format("%2b", opc)
+
+op CFLi_fmt(func: CFL_op, d: bit, imm22: card(22))
+  syntax = format("%s%s %d", func, if d then "" else "nd" endif, imm22)
+  image = format("10 %s %1b %22b", func, d, imm22)
+  action = { }
+
+op CFLri_fmt(func: CFLret_op, d: bit)
+  syntax = format("%s%s", func, if d then "" else "nd" endif)
+  image = format("1100 %1b XXXXX XXXXX XXXXX XXX 00 %s", d, func)
+  action = { }
+
+op CFLrs_fmt(func: CFL_op, d: bit, rs1: reg_idx)
+  syntax = format("%s%s %s", func, if d then "" else "nd" endif, rs1)
+  image = format("1100 %1b XXXXX %s XXXXX XXX 01 %s", d, rs1, func)
+  action = { }
+
+op CFLrt_fmt(func: CFL_op, d: bit, rs1: reg_idx, rs2: reg_idx)
+  syntax = format("%s%s %s, %s", func, if d then "" else "nd" endif, rs1, rs2)
+  image = format("1100 %1b XXXXX %s %s XXX 10 %s", d, rs1, rs2, func)
   action = { }
 
 
