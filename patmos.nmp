@@ -1,0 +1,248 @@
+let proc	= "patmos"
+let bit_order	= "uppermost"
+let gliss_isize = "32,64"
+
+// -- Types --
+type word       = card(32)
+type half       = card(16)
+type byte       = card(8)
+type bit        = card(1)
+
+type u32 	= card(32)
+type u16	= card(16)
+type u8         = card(8)
+
+// Constants
+let NUM_GPR	  = 32
+let NUM_SPR       = 16
+let NUM_PRR       = 8
+let MEM_ADDR_SIZE = 32
+
+// Global memory
+mem M   [ MEM_ADDR_SIZE, u8 ]
+mem M16 [ MEM_ADDR_SIZE >> 1, u16 ] alias = M[0]
+mem M32 [ MEM_ADDR_SIZE >> 2, u32 ] alias = M[0]
+
+// Local memories
+mem LM   [ MEM_ADDR_SIZE, u8 ]
+mem LM16 [ MEM_ADDR_SIZE >> 1, u16 ] alias = LM[0]
+mem LM32 [ MEM_ADDR_SIZE >> 2, u32 ] alias = LM[0]
+
+
+// ---- Registers ----
+
+// Registers
+reg R	[ NUM_GPR, word ]
+reg S   [ NUM_SPR, word ]
+reg PC	[ 1, word ]	pc = 1
+reg nPC	[ 1, word ]	npc = 1
+
+
+// Special registers, register aliases
+reg SZ [ 1, word ]      alias = S[0]
+reg SM [ 1, word ]      alias = S[1]
+reg SL [ 1, word ]      alias = S[2]
+reg SH [ 1, word ]      alias = S[3]
+reg SS [ 1, word ]      alias = S[5]
+reg ST [ 1, word ]      alias = S[6]
+reg SRB [ 1, word ]     alias = S[7]
+reg SRO [ 1, word ]     alias = S[8]
+reg SXB [ 1, word ]     alias = S[9]
+reg SXO [ 1, word ]     alias = S[10]
+
+reg RTMP [ 1, word ]    alias = R[29]
+reg RFP  [ 1, word ]    alias = R[30]
+reg RSP  [ 1, word ]    alias = R[31]
+
+
+// Type for GPR operands
+mode reg_idx(i: card(5)) = R[i]
+  syntax = format("$r%d", i)
+  image = format("%5b", i)
+  // attribute is true if this is the zero register
+  is_zero = (i == 0)
+
+// Type for SPR operands
+mode sreg_idx(i: card(4)) = S[i]
+  syntax = format("$s%d", i)
+  image = format("%4b", i)
+
+// Type for predicate operand (no negate bit)
+mode pred_idx(i: card(3)) = SZ<i..i>
+  syntax = format("$p%d", i)
+  image = format("%3b", i)
+
+// Type for predicate operand (with negate bit)
+mode npred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
+  syntax = format("%s$p%d", if n then "!" else "" endif, i)
+  image = format("%1b%3b", n, i)
+
+// Type for predicate guards (predicate with negate bit used as guard)
+mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
+  syntax = if n == 0 && i == 0 then
+             "      "
+	   else
+             format("(%s$p%d)", if n then "!" else " " endif, i)
+	   endif
+  image = format("%1b%3b", n, i)
+
+
+
+
+// Macros to update register values
+macro setGPR(r, v) = if r != 0 then R[r] = v; endif
+
+macro setPred(p, v) = if p != 0 then SZ<p> = v; endif
+
+
+// initialization, Patmos specific.
+op init()
+  action =
+      {
+	  // Initialize read-only register
+	  R[0] = 0;
+
+	  // Initialize predicates
+	  SZ = 0;
+
+	  // Note: pcs will be properly init at exec loading
+	  PC = 0;
+	  nPC = 4;
+      }
+
+
+
+// ---- Instructions ----
+
+// Base class for all instructions
+op instruction (x : Patmos_instr)
+  syntax = x.syntax
+  image = x.image
+  action =
+      {
+	  x.action;
+	  PC = nPC;
+	  // TODO the PC is increased depending on the bundle type
+	  nPC = nPC + 4;
+      }
+
+// All instructions are predicated
+op Patmos_instr = Pred_fmt
+
+
+op Pred_instr = ALU_instr
+//	        | SPC_instr
+//	        | LDT_instr
+//	        | STT_instr
+//		| STC_instr
+//		| CFL_instr
+
+
+// Predicated instructions:
+// <bundle bit> <predicate> <instr>
+op Pred_fmt (b: bit, p: gpred_idx, x: Pred_instr)
+  syntax = format("%s %s %s", if b then "{" else " " endif, p, x)
+  image = format("%1b %s %s", b, p, x)
+  action = 
+      {
+	if p then
+	  x.action;
+	endif;
+      }
+
+
+op ALU_instr = ALUi_fmt
+             | ALUl_fmt
+             | ALU_fmt
+
+//op SPC_instr = SPC_fmt
+//
+//op LDT_instr = LDT_fmt
+//
+//op STT_instr = STT_fmt
+//
+//op STC_instr = SPC_fmt
+//
+//op CFL_instr = CFLi_fmt 
+//             | CFLr_fmt
+//
+//
+op ALU_fmt = ALUr_fmt
+//           | ALUm_fmt
+//           | ALUc_fmt
+//           | ALUp_fmt
+//           | ALUb_fmt
+//	   | ALUci_fmt
+//
+//op SPC_fmt = SPCw_fmt
+//           | SPCt_fmt
+//	   | SPCf_fmt
+//
+//op STC_fmt = STCi_fmt
+//           | STCr_fmt
+//
+//op CFLr_fmt = CFLri_fmt
+//            | CFLrs_fmt
+//	    | CFLrt_fmt
+//
+
+
+op ALU_op(opc: card(3))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "add"
+	case 1:  "sub"
+	case 2:  "xor"
+	case 3:  "sl"
+	case 4:  "sr"
+	case 5:  "sra"
+	case 6:  "or"
+	case 7:  "and"
+      }
+  image = format("%3b", opc)
+  // True if this is a 'sub' opcode
+  is_sub = (opc == 1)
+
+op ALU_extop(opc: card(4))
+  syntax = 
+      switch (opc)
+      {
+	case 0:  "add"
+	case 1:  "sub"
+	case 2:  "xor"
+	case 3:  "sl"
+	case 4:  "sr"
+	case 5:  "sra"
+	case 6:  "or"
+	case 7:  "and"
+	case 11:  "nor"
+	case 12:  "shadd"
+	case 13:  "shadd2"
+	default: "undef!"
+      }
+  image = format("%4b", opc)
+  // True if this is a 'sub' opcode
+  is_sub = (opc == 1)
+
+
+op ALUi_fmt(func: ALU_op, rd: reg_idx, rs1: reg_idx, imm12: card(12))
+  syntax = if func.is_sub && rd.is_zero && rs1.is_zero && imm12 == 0 then
+             "nop"
+	   else
+             format("%s %s = %s, %d", func, rd, rs1, imm12)
+	   endif
+  image = format("00 %s %s %s %12b", func, rd, rs1, imm12)
+  action = { }
+
+op ALUl_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, imm32: card(32))
+  syntax = format("%s %s = %s, %d", func, rd, rs1, imm32)
+  image = format("11111 %s %s XXXXX 000 %s %32b", rd, rs1, func, imm32)
+  action = { }
+
+op ALUr_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, rs2: reg_idx)
+  syntax = format("%s %s = %s, %s", func, rd, rs1, rs2)
+  image = format("01000 %s %s %s 000 %s", rd, rs1, rs2, func)
+  action = { }
+
+
