@@ -42,27 +42,27 @@ set(SOURCES
 if(NOT MINGW_WIN)
 	add_custom_command(
 		OUTPUT ${OTAWA_KIND} DEPENDS "kind.tpl" COMMAND ${GLISS_ATTR}
-		ARGS ${TARGET_IRG} -o ${OTAWA_KIND} -a otawa_kind -f -t "kind.tpl" -d "return 0\\;" -e kind.nmp
+		ARGS ${TARGET_IRG} -o ${OTAWA_KIND} -a otawa_kind -f -t "kind.tpl" -d "return 0\\;" -e ${CMAKE_SOURCE_DIR}/kind.nmp
 		DEPENDS ${TARGET_IRG}
 	)
 	add_custom_command(
 		OUTPUT ${OTAWA_TARGET} DEPENDS "target.tpl" COMMAND ${GLISS_ATTR}
-		ARGS ${TARGET_IRG} -o ${OTAWA_TARGET} -a otawa_target -f -t "target.tpl" -d "return 0\\;" -e target.nmp
+		ARGS ${TARGET_IRG} -o ${OTAWA_TARGET} -a otawa_target -f -t "target.tpl" -d "return 0\\;" -e ${CMAKE_SOURCE_DIR}/target.nmp
 		DEPENDS ${TARGET_IRG}
 	)
 	add_custom_command(
 		OUTPUT ${OTAWA_DELAYED} DEPENDS "delayed.tpl" COMMAND ${GLISS_ATTR}
-		ARGS ${TARGET_IRG} -o ${OTAWA_DELAYED} -a otawa_delayed -f -t "delayed.tpl" -d "return 0\\;" -e delayed.nmp
+		ARGS ${TARGET_IRG} -o ${OTAWA_DELAYED} -a otawa_delayed -f -t "delayed.tpl" -d "return 0\\;" -e ${CMAKE_SOURCE_DIR}/delayed.nmp
 		DEPENDS ${TARGET_IRG}
 	)
 	add_custom_command(
 		OUTPUT ${OTAWA_USED_REGS} DEPENDS "used_regs.tpl" COMMAND ${GLISS_ATTR}
-		ARGS ${TARGET_IRG} -o ${OTAWA_USED_REGS} -a otawa_used_regs -f -t "used_regs.tpl" -d "tmp_var[0] = END_REG\\; return 0\\;" -e used_regs.nmp
+		ARGS ${TARGET_IRG} -o ${OTAWA_USED_REGS} -a otawa_used_regs -f -t "used_regs.tpl" -d "tmp_var[0] = END_REG\\; return 0\\;" -e ${CMAKE_SOURCE_DIR}/used_regs.nmp
 		DEPENDS ${TARGET_IRG}
 	)
 	add_custom_command(
 		OUTPUT ${OTAWA_SEM} DEPENDS "sem.tpl" "sem.nmp" COMMAND ${GLISS_ATTR}
-		ARGS ${TARGET_IRG} -o ${OTAWA_SEM} -a otawa_sem -p -t "sem.tpl" -d "';'" -e sem.nmp
+		ARGS ${TARGET_IRG} -o ${OTAWA_SEM} -a otawa_sem -p -t "sem.tpl" -d "';'" -e ${CMAKE_SOURCE_DIR}/sem.nmp
 		DEPENDS ${TARGET_IRG}
 	)
 endif()
