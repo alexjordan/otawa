@@ -1,0 +1,25 @@
+// otawa_delayed of instructions
+// Used to know which instruction have delayed branches
+
+let DELAYED_NONE = 0
+let DELAYED_ALWAYS = 1
+let DELAYED_TAKEN = 2
+
+extend call, jmpl
+	otawa_delayed = DELAYED_ALWAYS
+
+extend bicc
+	otawa_delayed =
+		if a == 0 then DELAYED_ALWAYS
+		else
+			if cond.value == 0 then DELAYED_NONE
+			else DELAYED_TAKEN endif
+		endif
+
+extend fbfcc
+	otawa_delayed =
+		if a == 0 then DELAYED_ALWAYS
+		else
+			if cond.value == 0 then DELAYED_NONE
+			else DELAYED_TAKEN endif
+		endif

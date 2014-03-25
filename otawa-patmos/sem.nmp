@@ -1,0 +1,969 @@
+// canonicals
+canon s32 "_R"(u32)
+canon s32 "_F"(u32) 
+canon u32 "_PSR"
+canon u32 "_FSR"
+canon "_ADD"(u32, u32, u32)
+canon "_SETI"(u32, s32)
+canon "_LOAD"(u32, u32, u32)
+canon "_STORE"(u32, u32, u32)
+canon "_SET"(u32, u32)
+canon "_IF"(u32, u32, u32)
+canon "_BRANCH"(u32)
+canon "_OR"(u32, u32, u32)
+canon "_WR_RESTORE"()
+canon "_WR_SAVE"()
+
+// condition codes
+canon u32 "_NO_COND"
+canon u32 "_EQ"
+canon u32 "_LT"
+canon u32 "_LE"
+canon u32 "_GE"
+canon u32 "_GT"
+canon u32 "_ANY_COND"
+canon u32 "_NE"
+canon u32 "_ULT"
+canon u32 "_ULE"
+canon u32 "_UGE"
+canon u32 "_UGT"
+
+// operands
+let T1 = -1
+let T2 = -2
+macro RD = "_R"(rd.value)
+macro RS1 = "_R"(rs1.value)
+macro RS2 = "_R"(rs2.value)
+macro IMM = rs2.value
+macro IDX = rs2.idx
+
+// operations
+macro scratch(d) = "_SCRATCH"(d)
+macro _if(a,b,c) = "_IF"(a,b,c)
+macro _branch(a) = "_BRANCH"(a)
+macro _add(d, s1, s2) = "_ADD"(d, s1, s2)
+macro _load(d, s1, s2) = "_LOAD"(d, s1, s2)
+macro _store(d, s1, s2) = "_STORE"(d, s1, s2)
+macro _sub(d, s1, s2) = "_SUB"(d, s1, s2)
+macro _and(d, s1, s2) = "_AND"(d, s1, s2)
+macro _xor(d, s1, s2) = "_XOR"(d, s1, s2)
+macro _cmp(d, s1, s2) = "_CMP"(d, s1, s2)
+macro _shl(d, s1, s2) = "_SHL"(d, s1, s2)
+macro _shli(d, s, i) = "_SETI"(T1, i); "_SHL"(d, s, T1)
+macro _shr(d, s1, s2) = "_SHR"(d, s1, s2)
+macro _shri(d, s, i) = "_SETI"(T1, i); "_SHR"(d, s, T1)
+macro _asr(d, s1, s2) = "_ASR"(d, s1, s2)
+macro _asri(d, s, i) = "_SETI"(T1, i); "_ASR"(d, s, T1)
+macro _set(d, s) = "_SET"(d, s)
+macro _seti(d, i) = "_SETI"(d, i)
+macro _addi(d, s, i) = "_SETI"(T1, i); "_ADD"(d, s, T1)
+macro _subi(d, s, i) = "_SETI"(T1, i); "_SUB"(d, s, T1)
+macro _andi(d, s, i) = "_SETI"(T1, i); "_AND"(d, s, T1)
+macro _xori(d, s, i) = "_SETI"(T1, i); "_XOR"(d, s, T1)
+macro _or(d, s1, s2) = "_OR"(d, s1, s2)
+
+
+
+// %g0 wired binary operation
+macro binop(op) = \
+		if rd.value != 0 then \
+			if rs1.value == 0 then \
+				"_SETI"(T1, 0); \
+			else \
+				"_SET"(T1, RS1); \
+			endif; \
+			if i != 0 then \
+				"_SETI"(T2, IMM); \
+			else \
+				if rs2.value == 0 then \
+					"_SETI"(T2, 0); \
+				else \
+					"_SET"(T2, RS1); \
+				endif; \
+			endif; \
+			op \
+		endif;
+
+macro binop2(op, opi, dst) = \
+                if i != 0 then \
+                        if rs1.value == 0 then _seti(dst, IMM); \
+                        else opi(dst, RS1, IMM); endif; \
+                else \
+                        if rs1.value == 0 then \
+                                if rs2.value == 0 then _seti(dst, 0); \
+                                else _set(dst, RS2); endif; \
+                        else \
+                                if rs2.value == 0 then _set(dst, RS1);  \
+                                else op(dst, RS1, RS2); endif; \
+                        endif; \
+                endif;
+
+
+// translating conditions
+macro get_cond(c) = \
+	switch (c) { \
+		case 0:		"_NO_COND"	\
+		case 1:		"_EQ" \
+		case 2:		"_LE" \
+		case 3:		"_LT" \
+		case 4:		"_ULE" \
+		case 5:		"_ULT" \
+		case 6:		"_ANY_COND" \
+		case 7:		"_ANY_COND" \
+		case 8:		"_NO_COND" \
+		case 9:		"_NE" \
+		case 0xa:	"_GT" \
+		case 0xb:	"_GE" \
+		case 0xc:	"_UGT" \
+		case 0xd:	"_UGE" \
+		case 0xe:	"_ANY_COND" \
+		case 0xf:	"_ANY_COND" \
+		default:	"_ANY_COND" \
+	}
+
+
+// temporaries
+var t1[1, u32]
+var r2[1, u32]
+
+
+// ALU
+extend add
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, RD);
+		endif;
+	}
+
+extend addcc
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+//		_seti(T1, 0);
+//		_cmp("_PSR", T2, T1);
+		scratch("_PSR");
+	}
+
+extend addx
+	otawa_sem = { if rd.value != 0 then scratch(RD); endif; }
+extend addxcc
+	otawa_sem = { if rd.value != 0 then scratch(RD); endif; scratch("_PSR"); } 
+
+extend sub
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_sub, _subi, RD);
+		endif;
+	}
+
+extend subcc
+	otawa_sem = {
+		binop2(_sub, _subi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+		_seti(T1, 0);
+		_cmp("_PSR", T2, T1);
+	}
+
+extend subx
+	otawa_sem = { if rd.value != 0 then scratch(RD); endif; }
+extend subxcc
+	otawa_sem = { if rd.value != 0 then scratch(RD); endif; scratch("_PSR"); } 
+
+// LOGICAL 
+
+extend and
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+	}
+
+extend andcc
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+		scratch("_PSR");
+	}
+
+extend andn
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+	}
+
+extend andncc
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+		scratch("_PSR");
+	}
+
+extend or
+	otawa_sem = {
+		if rs1.value == 0 then
+			if i != 0 then
+				_seti(T1, rs2.value);
+				_set(RD, T1);
+			else
+				_set(RD, RS2);
+			endif;
+		else
+			if rd.value != 0 then
+				if i == 0 then
+					_or(RD, RS1, RS2);
+				else
+					_seti(T1, IMM);
+					_or(RD, RS1, T1);
+				endif;
+			endif;
+		endif;
+	}
+
+extend orcc
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+//		if i == 0 && (rs1.value == rs2.value) then
+//			_seti(T1, 0);
+//			_cmp("_PSR", T1, RS1);
+//		else
+			scratch("_PSR");
+//		endif;
+	}
+
+extend orn
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+	}
+
+extend orncc
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+		scratch("_PSR");
+	}
+
+extend xor
+	otawa_sem = {
+		if rd.value != 0 then
+			if (i == 0) && (rs1.value == rs2.value) then
+				_seti(RD, 0);
+			else
+				scratch(RD);
+			endif;
+		endif;
+	}
+
+extend xorcc
+	otawa_sem = {
+		if (i == 0) && (rs1.value == rs2.value) then
+			_seti(T2, 0);
+			if rd.value != 0 then
+				_set(RD, T2);
+			endif;
+			_seti(T1, 0);
+			_cmp("_PSR", T2, T1);
+		else
+			if rd.value != 0 then
+				scratch(RD);
+			endif;
+			scratch("_PSR");
+		endif;
+	}
+
+extend xnor
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+	}
+
+extend xnorcc
+	otawa_sem = {
+		if rd.value != 0 then
+			scratch(RD);
+		endif;
+		scratch("_PSR");
+	}
+
+
+extend sll 
+	otawa_sem = {
+		if rd.value != 0 then
+			if i != 0 then
+				if rs1.value == 0 then _seti(RD, 0);
+				else _shli(RD, RS1, IDX); endif;
+			else
+				if rs1.value == 0 then _seti(RD, 0);
+				else _shl(RD, RS1, RS2); endif;
+			endif;
+			
+		endif;
+	}
+
+extend srl
+	otawa_sem = {
+		if rd.value != 0 then
+			if i != 0 then
+				if rs1.value == 0 then _seti(RD, 0);
+				else _shri(RD, RS1, IDX); endif;
+			else
+				if rs1.value == 0 then _seti(RD, 0);
+				else _shr(RD, RS1, RS2); endif;
+			endif;
+			
+		endif;
+	}
+
+extend sra
+	otawa_sem = {
+		if rd.value != 0 then
+			if i != 0 then
+				if rs1.value == 0 then _seti(RD, 0);
+				else _asri(RD, RS1, IDX); endif;
+			else
+				if rs1.value == 0 then _seti(RD, 0);
+				else _asr(RD, RS1, RS2); endif;
+			endif;
+			
+		endif;
+	}
+
+
+
+extend taddcc
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+//		_seti(T1, 0);
+//		_cmp("_PSR", T2, T1);
+		scratch("_PSR");
+	}
+
+extend tsubcc
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+		_seti(T1, 0);
+		_cmp("_PSR", T2, T1);
+	}
+
+extend taddcctv
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+//		_seti(T1, 0);
+//		_cmp("_PSR", T2, T1);
+		scratch("_PSR");
+	}
+
+extend tsubcctv
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		if rd.value != 0 then
+			_set(RD, T2);
+		endif;
+		_seti(T1, 0);
+		_cmp("_PSR", T2, T1);
+	}
+
+
+
+// devrait scratch tout les registres vu que ca save? 
+extend save
+	otawa_sem = {
+		if rd.value != 0 then
+			if i == 0 then
+				_add(RD, RS1, RS2);
+			else
+				_seti(T1, IDX); _add(RD, RS1, T1);
+			endif;
+		endif;
+		"_WR_SAVE"();
+	}
+
+extend restore
+	otawa_sem = {
+		"_WR_RESTORE"();
+		if rd.value != 0 then 
+			if i == 0 then
+				_add(RD, RS1, RS2);
+			else
+				_seti(T1, IDX); _add(RD, RS1, T1);
+			endif;
+		endif;
+	}
+extend mulscc
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend umul
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend smul
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend umulcc
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend smulcc
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+extend udiv
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+extend sdiv
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend udivcc
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+extend sdivcc
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+
+extend rdpsr
+	otawa_sem = {
+		if rd.value != 0 then
+		_set(RD, "_PSR");
+		endif;	
+	}
+
+extend rdasr
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+extend rdwim
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+extend rdtbr
+	otawa_sem = {
+		if rd.value != 0 then scratch(RD); endif;
+	}
+
+extend wrpsr
+	otawa_sem = {
+		_set("_PSR", RD);	
+	}
+
+extend wrasr
+	otawa_sem = {
+	}
+
+extend wrwim
+	otawa_sem = {
+	}
+
+extend wrtbr
+	otawa_sem = {
+	}
+
+extend flush
+	otawa_sem = {
+	}
+
+extend ticc
+	otawa_sem = {
+		if cond.value != 0 then
+			if cond.value != 8 then
+				_if(get_cond(cond.value), "_PSR", 2);
+			endif;
+			scratch(T2);
+			_branch(T2);
+		endif;
+	}
+
+extend rett
+	otawa_sem = {
+		scratch(T1);
+		_if(T1, "_EQ", 2);
+		_branch(T2);
+		if i != 0 then
+			_branch(IMM);
+		else
+			_branch(RS2);
+		endif;
+		
+	}
+
+
+extend jmpl
+	otawa_sem = {
+		if rd.value != 0 then
+			_seti(RD, __IADDR);	
+		endif;
+		binop2(_add, _addi, T2);
+		_branch(T2);
+	}
+
+extend sethi
+	otawa_sem = {
+		if rd.value != 0 then
+			_seti(RD, coerce(s32, imm22) << 10);
+		endif;
+	}
+
+
+extend bicc
+	otawa_sem = {
+		if cond.value != 0 then
+			if cond.value != 8 then
+				_if(get_cond(cond.value), "_PSR", 2);
+			endif; 
+			_seti(T2, __IADDR + (coerce(s32, disp22) << 2));
+			_branch(T2);
+		endif;
+	}
+
+extend call
+	otawa_sem = {
+		_seti("_R"(15), __IADDR);
+		_seti(T2, disp30);
+		_branch(T2);
+	}
+
+
+extend swap
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_load(T1, T2, 4);
+		_store(RD, T2, 4);
+		_set(RD, T1);
+	}
+
+extend swapa
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_load(T1, T2, 4);
+		_store(RD, T2, 4);
+		_set(RD, T1);
+	}
+
+extend ldstub
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_load(T1, T2, 1);
+		_set(RD, T1);
+		_seti(T1, 255);
+		_store(T1, T2, 1);
+	}
+
+extend ldstuba
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_load(T1, T2, 1);
+		_set(RD, T1);
+		_seti(T1, 255);
+		_store(T1, T2, 1);
+	}
+
+extend ldd 
+	otawa_sem = {
+		if rd.value != 0 then
+			if (rd.value % 2) == 0 then
+				scratch("_R"(rd.value));
+				scratch("_R"(rd.value + 1));
+			else
+				scratch("_R"(rd.value));
+			endif;
+		endif;
+	
+	}
+
+
+
+extend ldsb
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 1);
+		endif;
+	}
+
+
+extend ldub
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 1);
+		endif;
+	}
+
+
+extend ldsh
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 2);
+		endif;
+	}
+
+
+extend lduh
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 2);
+		endif;
+	}
+
+
+extend ld
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 4);
+		endif;
+	}
+
+
+
+extend stb
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 1);
+	}
+
+extend sth
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 2);
+	}
+
+extend st
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 4);
+	}
+
+
+
+
+// version ASI
+
+extend ldda
+	otawa_sem = {
+		if rd.value != 0 then
+			if (rd.value % 2) == 0 then
+				scratch("_R"(rd.value));
+				scratch("_R"(rd.value + 1));
+			else
+				scratch("_R"(rd.value));
+			endif;
+		endif;
+	
+	}
+
+
+
+extend ldsba
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 1);
+		endif;
+	}
+
+
+extend lduba
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 1);
+		endif;
+	}
+
+
+extend ldsha
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 2);
+		endif;
+	}
+
+
+extend lduha
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 2);
+		endif;
+	}
+
+
+extend lda
+	otawa_sem = {
+		if rd.value != 0 then
+			binop2(_add, _addi, T2);
+			_load(RD, T2, 4);
+		endif;
+	}
+
+
+
+extend stba
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 1);
+	}
+
+extend stha
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 2);
+	}
+
+extend sta
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		_store(RD, T2, 4);
+	}
+
+
+
+extend std
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		scratch(T1);
+		_store(T1, T2, 4);
+		_seti(T1, 4);
+		_add(T2, T1, "_R"(0));
+		scratch(T1);
+		_store(T1, T2, 4);
+	}
+
+extend stda
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		scratch(T1);
+		_store(T1, T2, 4);
+		_seti(T1, 4);
+		_add(T2, T1, "_R"(0));
+		scratch(T1);
+		_store(T1, T2, 4);
+	}
+
+
+extend ldf
+	otawa_sem = {
+		scratch("_F"(rd.value));
+	}
+
+extend lddf
+	otawa_sem = {
+		if (rd.value % 2) == 0 then
+			scratch("_F"(rd.value));
+			scratch("_F"(rd.value + 1));
+		else
+				scratch("_R"(rd.value));
+			endif;
+
+	}
+
+
+extend ldfsr
+	otawa_sem = {
+		scratch("_F"(rd.value));
+	}
+
+extend stf
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		scratch(T1);
+		_store(T1, T2, 4);
+	}
+
+extend stdf
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		scratch(T1);
+		_store(T1, T2, 4);
+		_seti(T1, 4);
+		_add(T2, T1, "_R"(0));
+		scratch(T1);
+		_store(T1, T2, 4);
+	}
+
+
+extend stfsr
+	otawa_sem = {
+		binop2(_add, _addi, T2);
+		scratch(T1);
+		_store(T1, T2, 4);
+	}
+
+
+// FLOAT
+
+extend fitos
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fitod
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+extend fstoi
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fdtoi
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fstod
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+extend fdtos
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+
+extend fmovs 
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fnegs
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fabss
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+
+extend fsqrts
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fsqrtd
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+
+extend fadds
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend faddd
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+
+extend fsubs
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fsubd
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+
+extend fmuls
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fmuld
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+extend fsmuld
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+
+extend fdivs
+	otawa_sem = {
+		scratch(rd.value);
+	}
+
+extend fdivd
+	otawa_sem = {
+		scratch(rd.value & 0xfe);
+		scratch(rd.value | 1);
+	}
+
+
+
+extend fcmps
+	otawa_sem = {
+		scratch(rs1.value);
+	}
+
+extend fcmpd
+	otawa_sem = {
+		scratch(rs1.value & 0xfe);
+		scratch(rs1.value | 1);
+	}
+
+
+extend fcmpes
+	otawa_sem = {
+		scratch(rs1.value);
+	}
+
+extend fcmped
+	otawa_sem = {
+		scratch(rs1.value & 0xfe);
+		scratch(rs1.value | 1);
+	}
+
+

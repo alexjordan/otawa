@@ -1,2 +1,10 @@
-patmos.nml
-patmos.irg
+# Ignore build directories
+build/
+patmos/disasm
+patmos/include
+patmos/src
+
+# Ignore generated files
+*.igl
+*.nml
+

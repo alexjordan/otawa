@@ -1,0 +1,18 @@
+
+// identify a dynamic target which is only known at runtime,
+// same as default value for the otawa_target attr for a non branch instruction
+let TARGET_UNKNOWN = 0
+
+
+extend call
+	otawa_target = __IADDR + (coerce(int(32), disp30) << 2)
+
+// we are only interessed in static stuff, this target is dynamic and will be studied differently
+//extend jmpl
+//	otawa_target = rs1 + if i == 0 then GET_WIN_REG(rs2<4..0>) else coerce(int(32), rs2) endif
+extend jmpl
+	otawa_target = TARGET_UNKNOWN
+
+extend bicc, fbfcc
+	otawa_target = __IADDR + (coerce(int(32), disp22) << 2)
+

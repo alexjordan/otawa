@@ -2,7 +2,7 @@
 
 # configuration
 ARCH = patmos
-GLISS_PREFIX=../gliss2
+GLISS_PREFIX=../../gliss2
 WITH_DISASM=1	# comment it to prevent disassembler building
 #WITH_SIM=1		# comment it to prevent simulator building
 
