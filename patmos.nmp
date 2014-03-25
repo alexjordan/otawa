@@ -387,6 +387,7 @@ op LDT_op(opc: card(5))
 	default: "undef!"
       }
   image = format("%5b", opc)
+  is_decoupled = (opc >= 20)
 
 op STT_op(opc: card(5))
   syntax = 
@@ -469,6 +470,8 @@ op CFL_op(opc: card(2))
 	case 3:  "trap"
       }
   image = format("%2b", opc)
+  // Does this use a PC relative or an absolute immediate?
+  is_PCRel = (opc == 1)
 
 
 op CFLret_op(opc: card(2))
@@ -482,7 +485,9 @@ op CFLret_op(opc: card(2))
   image = format("%2b", opc)
 
 op CFLi_fmt(func: CFL_op, d: bit, imm22: card(22))
-  syntax = format("%s%s %d", func, if d then "" else "nd" endif, imm22)
+  // This is a workaround for gliss type/size conversion to signed.
+  syntax = format("%s%s %d", func, if d then "" else "nd" endif, 
+                                   if func.is_PCRel then (coerce(int(32), imm22)<<10)>>10 else imm22 endif)
   image = format("10 %s %1b %22b", func, d, imm22)
   action = { }
 
