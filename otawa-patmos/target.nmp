@@ -4,15 +4,15 @@
 let TARGET_UNKNOWN = 0
 
 
-extend call
-	otawa_target = __IADDR + (coerce(int(32), disp30) << 2)
+extend CFLi_fmt
+	otawa_target = if func.is_PCRel then
+	  // PC relative, convert to bytes (as signed value)
+	  __IADDR + ((coerce(int(32), imm22)<<10)>>8)
+	else
+	  // absolute address, convert to bytes
+	  coerce(card(32),imm22) << 2
+	endif
 
-// we are only interessed in static stuff, this target is dynamic and will be studied differently
-//extend jmpl
-//	otawa_target = rs1 + if i == 0 then GET_WIN_REG(rs2<4..0>) else coerce(int(32), rs2) endif
-extend jmpl
+extend CFLrs_fmt, CFLrt_fmt
 	otawa_target = TARGET_UNKNOWN
-
-extend bicc, fbfcc
-	otawa_target = __IADDR + (coerce(int(32), disp22) << 2)
 

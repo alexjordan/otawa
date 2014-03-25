@@ -6,6 +6,9 @@ GLISS_PREFIX=../../gliss2
 WITH_DISASM=1	# comment it to prevent disassembler building
 #WITH_SIM=1		# comment it to prevent simulator building
 
+WITH_DYNLIB=1
+export WITH_DYNLIB
+
 MEMORY=io_mem
 LOADER=old_elf
 SYSCALL=syscall-linux
@@ -48,13 +51,13 @@ src include: $(ARCH).irg
 	$(GLISS_PREFIX)/gep/gep $(GFLAGS) $< -S
 
 lib: src include/$(ARCH)/config.h src/disasm.c
-	(cd src; make)
+	(cd src; $(MAKE))
 
 $(ARCH)-disasm: lib
-	cd disasm; make
+	cd disasm; $(MAKE)
 
 $(ARCH)-sim: lib
-	cd sim; make
+	cd sim; $(MAKE)
 
 include/$(ARCH)/config.h: config.tpl
 	test -d include/$(ARCH) || mkdir -p include/$(ARCH)

@@ -85,6 +85,7 @@ mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
              format("(%s$p%d)", if n then "!" else " " endif, i)
 	   endif
   image = format("%1b%3b", n, i)
+  always_true = (n == 0 && i == 0)
 
 
 
@@ -140,12 +141,12 @@ op Pred_instr = ALU_instr
 
 // Predicated instructions:
 // <bundle bit> <predicate> <instr>
-op Pred_fmt (b: bit, p: gpred_idx, x: Pred_instr)
-  syntax = format("%s %s %s", if b then "{" else " " endif, p, x)
-  image = format("%1b %s %s", b, p, x)
+op Pred_fmt (b: bit, guard: gpred_idx, x: Pred_instr)
+  syntax = format("%s %s %s", if b then "{" else " " endif, guard, x)
+  image = format("%1b %s %s", b, guard, x)
   action = 
       {
-	if p then
+	if guard then
 	  x.action;
 	endif;
       }
@@ -476,6 +477,8 @@ op CFL_op(opc: card(2))
   image = format("%2b", opc)
   // Does this use a PC relative or an absolute immediate?
   is_PCRel = (opc == 1)
+  // Is this a local branch?
+  is_local = (opc == 1)
   // Is this a call instruction
   is_call = (opc == 0)
   // Is this a trap instruction

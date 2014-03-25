@@ -21,7 +21,10 @@ let IS_SPECIAL	= 0x00010000
 
 
 // ALU operations, multiply
-extend ALUi_fmt, ALUl_fmt, ALUr_fmt
+extend ALUi_fmt
+	otawa_kind = IS_INT | IS_ALU | if func.is_shift then IS_SHIFT else NO_KIND endif
+
+extend ALUl_fmt, ALUr_fmt
 	otawa_kind = IS_INT | IS_ALU | if func.is_shift then IS_SHIFT else NO_KIND endif
 
 extend ALUm_fmt
@@ -29,7 +32,7 @@ extend ALUm_fmt
 
 // Comparisons
 extend ALUc_fmt, ALUci_fmt
-	otawa_kind = IS_INT | IS_COND
+	otawa_kind = IS_INT
 
 // Predicate operations
 extend ALUp_fmt, ALUb_fmt
@@ -55,6 +58,9 @@ extend STCi_fmt, STCr_fmt
 	otawa_kind = IS_INT | IS_MEM | IS_SPECIAL
 
 // Control flow
+extend Pred_fmt
+	otawa_kind = if guard.always_true then NO_KIND else IS_COND endif | x.otawa_kind
+
 extend CFLi_fmt, CFLrs_fmt, CFLrt_fmt
 	otawa_kind = IS_CONTROL | if func.is_call then IS_CALL else NO_KIND endif
 

@@ -33,7 +33,7 @@ extern "C"
 #include "otawa_kind.h"
 
 /* used registers */
-#include "otawa_used_regs.h"
+// #include "otawa_used_regs.h"
 
 /* target computation */
 #include "otawa_target.h"
@@ -61,11 +61,8 @@ public:
 	Platform(const Platform& platform, const PropList& props = PropList::EMPTY);
 
 	// Registers
-	static hard::Register PSR_reg;
-	static hard::Register FSR_reg;
 	static const hard::PlainBank R_bank;
-	static const hard::PlainBank F_bank;
-	static const hard::MeltedBank MISC_bank;
+	static const hard::PlainBank S_bank;
 
 	// otawa::Platform overload
 	virtual bool accept(const Identification& id);
@@ -73,49 +70,50 @@ public:
 
 
 // SimState class
+/*
 class SimState: public otawa::SimState
 {
 public:
 	SimState(Process *process, patmos_state_t *state, patmos_decoder_t *decoder, bool _free = false)
-	: otawa::SimState(process), _leonState(state), _leonDecoder(decoder) {
+	: otawa::SimState(process), _patmosState(state), _patmosDecoder(decoder) {
 		ASSERT(process);
 		ASSERT(state);
 	}
 
 	virtual ~SimState(void) {
-		patmos_delete_state(_leonState);
+		patmos_delete_state(_patmosState);
 	}
 
-	virtual void setSP(const Address& addr) { LEON_SYSPARM_REG32_SP(_leonState) = addr.offset(); }
+	// virtual void setSP(const Address& addr) { LEON_SYSPARM_REG32_SP(_patmosState) = addr.offset(); }
 
-	inline patmos_state_t *leonState(void) const { return _leonState; }
+	inline patmos_state_t *patmosState(void) const { return _patmosState; }
 
 	virtual Inst *execute(Inst *oinst) {
 		ASSERTP(oinst, "null instruction pointer");
 
 		Address addr = oinst->address();
 		patmos_inst_t *inst;
-		_leonState->nPC = addr.address();
-		inst = patmos_decode(_leonDecoder, _leonState->nPC);
-		patmos_execute(_leonState, inst);
+		_patmosState->nPC = addr.address();
+		inst = patmos_decode(_patmosDecoder, _patmosState->nPC);
+		patmos_execute(_patmosState, inst);
 		patmos_free_inst(inst);
-		if (_leonState->nPC == oinst->topAddress()) {
+		if (_patmosState->nPC == oinst->topAddress()) {
 			Inst *next = oinst->nextInst();
 			while (next && next->isPseudo())
 				next = next->nextInst();
-			if(next && next->address() == Address(_leonState->nPC))
+			if(next && next->address() == Address(_patmosState->nPC))
 				return next;
 		}
-		Inst *next = process()->findInstAt(_leonState->nPC);
-		ASSERTP(next, "cannot find instruction at " << Address(_leonState->nPC) << " from " << oinst->address());
+		Inst *next = process()->findInstAt(_patmosState->nPC);
+		ASSERTP(next, "cannot find instruction at " << Address(_patmosState->nPC) << " from " << oinst->address());
 		return next;
 	}
 
 private:
-	patmos_state_t *_leonState;
-	patmos_decoder_t *_leonDecoder;
+	patmos_state_t *_patmosState;
+	patmos_decoder_t *_patmosDecoder;
 };
-
+*/
 
 /**
  * This class provides support to build a loader plug-in based on the GLISS V2
@@ -140,15 +138,16 @@ public:
 	~Process();
 
 	virtual otawa::SimState *newState(void) {
-		patmos_state_t *s = patmos_new_state(_leonPlatform);
-		ASSERTP(s, "otawa::leon::Process::newState(), cannot create a new leon_state");
-		return new SimState(this, s, _leonDecoder, true);
+		//patmos_state_t *s = patmos_new_state(_patmosPlatform);
+		//ASSERTP(s, "otawa::patmos::Process::newState(), cannot create a new patmos_state");
+		//return new SimState(this, s, _patmosDecoder, true);
+		return 0;
 	}
 
 	virtual int instSize(void) const { return 4; }
 	void decodeRegs( Inst *inst, elm::genstruct::AllocatedTable<hard::Register *> *in, elm::genstruct::AllocatedTable<hard::Register *> *out);
-	inline patmos_decoder_t *leonDecoder() { return _leonDecoder;}
-	inline void *leonPlatform(void) const { return _leonPlatform; }
+	inline patmos_decoder_t *patmosDecoder() { return _patmosDecoder;}
+	inline void *patmosPlatform(void) const { return _patmosPlatform; }
 	void setup(void);
 	void getSem(otawa::Inst *inst, sem::Block& block);
 
@@ -176,14 +175,14 @@ protected:
 	friend class Segment;
 	virtual otawa::Inst *decode(Address addr);
 	virtual gel_file_t *gelFile(void) { return _gelFile; }
-	virtual patmos_memory_t *leonMemory(void) { return _leonMemory; }
+	virtual patmos_memory_t *patmosMemory(void) { return _patmosMemory; }
 
 private:
 	otawa::Inst *_start;
 	hard::Platform *_platform;
-	patmos_platform_t *_leonPlatform;
-	patmos_memory_t *_leonMemory;
-	patmos_decoder_t *_leonDecoder;
+	patmos_platform_t *_patmosPlatform;
+	patmos_memory_t *_patmosMemory;
+	patmos_decoder_t *_patmosDecoder;
 	int argc;
 	char **argv, **envp;
 	bool no_stack;
@@ -209,7 +208,7 @@ public:
 	 */
 	void dump(io::Output& out) {
 		char out_buffer[200];
-		patmos_inst_t *inst = patmos_decode(proc.leonDecoder(), _addr);
+		patmos_inst_t *inst = patmos_decode(proc.patmosDecoder(), _addr);
 		patmos_disasm(out_buffer, inst);
 		patmos_free_inst(inst);
 		out << out_buffer;
@@ -217,29 +216,32 @@ public:
 
 	virtual kind_t kind() { return _kind; }
 	virtual address_t address() const { return _addr; }
-	virtual t::size size() const { return 4; }
+	virtual ot::size size() const { return 4; }
 	virtual Process &process() { return proc; }
 
 	virtual const elm::genstruct::Table<hard::Register *>& readRegs() {
-		if ( ! isRegsDone)
+/*		if ( ! isRegsDone)
 		{
 			decodeRegs();
 			isRegsDone = true;
 		}
+*/
 		return in_regs;
 	}
 
 	virtual const elm::genstruct::Table<hard::Register *>& writtenRegs() {
+/*
 		if ( ! isRegsDone)
 		{
 			decodeRegs();
 			isRegsDone = true;
 		}
+*/
 		return out_regs;
 	}
 
 	virtual void semInsts (sem::Block &block) {
-		proc.getSem(this, block);
+//		proc.getSem(this, block);
 	}
 
 protected:
@@ -265,13 +267,13 @@ public:
 	inline BranchInst(Process& process, kind_t kind, Address addr)
 	: Inst(process, kind, addr), _target(0), isTargetDone(false) {
 		patmos_inst_t *inst;
-		inst = patmos_decode(proc.leonDecoder(), (patmos_address_t)address());
+		inst = patmos_decode(proc.patmosDecoder(), (patmos_address_t)address());
 		otawa::delayed_t delay = patmos_delayed(inst);
 		if(delay != otawa::DELAYED_None)
 			otawa::DELAYED(this) = delay;
 	}
 
-	virtual t::size size() const { return 4; }
+	virtual ot::size size() const { return 4; }
 
 	virtual otawa::Inst *target() {
 		if (!isTargetDone) {
@@ -297,8 +299,7 @@ private:
  */
 static const RegBank *banks[] = {
 	&Platform::R_bank,
-	&Platform::F_bank,
-	&Platform::MISC_bank	// PSR, FSR
+	&Platform::S_bank
 };
 
 
@@ -308,31 +309,13 @@ static const elm::genstruct::Table<const RegBank *> banks_table(banks, 3);
 /**
  * R register bank.
  */
-const PlainBank Platform::R_bank("R", hard::Register::INT,  32, "%%r%d", 8+8*16/*GET SIZE FROM A TPL*/);
+const PlainBank Platform::R_bank("R", hard::Register::INT,  32, "%%r%d", 32);
 
 
 /**
- * F register bank.
+ * S register bank.
  */
-const PlainBank Platform::F_bank("F", hard::Register::FLOAT, 64, "%%f%d", 32);
-
-
-/**
- * PSR register
- */
-hard::Register Platform::PSR_reg("psr", hard::Register::INT, 32);
-
-
-/**
- * FSR register
- */
-hard::Register Platform::FSR_reg("fsr", hard::Register::INT, 32);
-
-
-/**
- * MISC register bank
- */
-const hard::MeltedBank Platform::MISC_bank("MISC", &Platform::PSR_reg, &Platform::FSR_reg, 0);
+const PlainBank Platform::S_bank("S", hard::Register::INT, 32, "%%s%d", 16);
 
 
 /**
@@ -364,7 +347,7 @@ Platform::Platform(const Platform& platform, const PropList& props)
 /**
  */
 bool Platform::accept(const Identification& id) {
-	return id.abi() == "elf" && id.architecture() == "powerpc";
+	return id.abi() == "elf" && id.architecture() == "patmos";
 }
 
 
@@ -396,7 +379,7 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 :	otawa::Process(manager, props),
  	_start(0),
  	_platform(platform),
-	_leonMemory(0),
+	_patmosMemory(0),
 	init(false),
 	map(0),
 	file(0)
@@ -404,14 +387,14 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 	ASSERTP(manager, "manager required");
 	ASSERTP(platform, "platform required");
 
-	// gliss2 leon structs
-	_leonPlatform = patmos_new_platform();
-	ASSERTP(_leonPlatform, "otawa::leon::Process::Process(..), cannot create a leon_platform");
-	_leonDecoder = patmos_new_decoder(_leonPlatform);
-	ASSERTP(_leonDecoder, "otawa::leon::Process::Process(..), cannot create a leon_decoder");
-	_leonMemory = patmos_get_memory(_leonPlatform, SPARC_MAIN_MEMORY);
-	ASSERTP(_leonMemory, "otawa::leon::Process::Process(..), cannot get main leon_memory");
-	patmos_lock_platform(_leonPlatform);
+	// gliss2 patmos structs
+	_patmosPlatform = patmos_new_platform();
+	ASSERTP(_patmosPlatform, "otawa::patmos::Process::Process(..), cannot create a patmos_platform");
+	_patmosDecoder = patmos_new_decoder(_patmosPlatform);
+	ASSERTP(_patmosDecoder, "otawa::patmos::Process::Process(..), cannot create a patmos_decoder");
+	_patmosMemory = patmos_get_memory(_patmosPlatform, PATMOS_MAIN_MEMORY);
+	ASSERTP(_patmosMemory, "otawa::patmos::Process::Process(..), cannot get main patmos_memory");
+	patmos_lock_platform(_patmosPlatform);
 
 	// build arguments
 	char no_name[1] = { 0 };
@@ -440,8 +423,8 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 /**
  */
 Process::~Process() {
-	patmos_delete_decoder(_leonDecoder);
-	patmos_unlock_platform(_leonPlatform);
+	patmos_delete_decoder(_patmosDecoder);
+	patmos_unlock_platform(_patmosPlatform);
 	if(_gelFile)
 		gel_close(_gelFile);
 }
@@ -532,22 +515,22 @@ File *Process::loadFile(elm::CString path) {
 	addFile(file);
 
 	// initialize the environment
-	ASSERTP(_leonPlatform, "invalid leon_platform !");
-	patmos_env_t *env = patmos_get_sys_env(_leonPlatform);
+	ASSERTP(_patmosPlatform, "invalid patmos_platform !");
+	patmos_env_t *env = patmos_get_sys_env(_patmosPlatform);
 	ASSERT(env);
 	env->argc = argc;
 	env->argv = argv;
 	env->envp = envp;
 
 	// load the binary
-	if(patmos_load_platform(_leonPlatform, (char *)&path) == -1)
+	if(patmos_load_platform(_patmosPlatform, (char *)&path) == -1)
 		throw LoadException(_ << "cannot load \"" << path << "\".");
 
 	// get the initial state
-	SimState *state = dynamic_cast<SimState *>(newState());
-	patmos_state_t *leonState = state->leonState();
-	if (!leonState)
-		throw LoadException("invalid leon_state !");
+	//SimState *state = dynamic_cast<SimState *>(newState());
+	//patmos_state_t *patmosState = state->patmosState();
+	//if (!patmosState)
+	//	throw LoadException("invalid patmos_state !");
 
 	// build segments
 	_gelFile = gel_open(&path, 0, GEL_OPEN_NOPLUGINS);
@@ -605,8 +588,8 @@ File *Process::loadFile(elm::CString path) {
 
 	// Last initializations
 	LTRACE;
-	_leonMemory = leonMemory();
-	ASSERTP(_leonMemory, "memory information mandatory");
+	_patmosMemory = patmosMemory();
+	ASSERTP(_patmosMemory, "memory information mandatory");
 	_start = findInstAt((address_t)infos.entry);
 	return file;
 }
@@ -615,7 +598,7 @@ File *Process::loadFile(elm::CString path) {
 // Memory read
 #define GET(t, s) \
 	void Process::get(Address at, t& val) { \
-			val = patmos_mem_read##s(_leonMemory, at.address()); \
+			val = patmos_mem_read##s(_patmosMemory, at.address()); \
 			/*cerr << "val = " << (void *)(int)val << " at " << at << io::endl;*/ \
 	}
 GET(signed char, 8);
@@ -633,7 +616,7 @@ GET(Address, 32);
  */
 void Process::get(Address at, string& str) {
 	Address base = at;
-	while(!patmos_mem_read8(_leonMemory, at.address()))
+	while(!patmos_mem_read8(_patmosMemory, at.address()))
 		at = at + 1;
 	int len = at - base;
 	char buf[len];
@@ -645,7 +628,7 @@ void Process::get(Address at, string& str) {
 /**
  */
 void Process::get(Address at, char *buf, int size)
-	{ patmos_mem_read(_leonMemory, at.address(), buf, size); }
+	{ patmos_mem_read(_patmosMemory, at.address(), buf, size); }
 
 
 /**
@@ -656,14 +639,14 @@ otawa::Inst *Process::decode(Address addr) {
 	// Decode the instruction
 	patmos_inst_t *inst;
 	TRACE("ADDR " << addr);
-	inst = patmos_decode(_leonDecoder, (patmos_address_t)addr.address());
+	inst = patmos_decode(_patmosDecoder, (patmos_address_t)addr.address());
 
 	// Build the instruction
 	Inst::kind_t kind = 0;
 	otawa::Inst *result = 0;
 
 	// get the kind from the nmp otawa_kind attribute
-	if(inst->ident == SPARC_UNKNOWN)
+	if(inst->ident == PATMOS_UNKNOWN)
 		TRACE("UNKNOWN !!!\n" << result);
 	else
 		kind = patmos_kind(inst);
@@ -704,41 +687,13 @@ patmos_address_t BranchInst::decodeTargetAddress(void) {
 	// Decode the instruction
 	patmos_inst_t *inst;
 	TRACE("ADDR " << addr);
-	inst = patmos_decode(proc.leonDecoder(), (patmos_address_t)address());
+	inst = patmos_decode(proc.patmosDecoder(), (patmos_address_t)address());
 
 	// retrieve the target addr from the nmp otawa_target attribute
 	Address target_addr;
 	patmos_address_t res = patmos_target(inst);
 	if(res != 0)
 		target_addr = res;
-
-	/* pattern recognition of
-	 *	sethi	%hi(base), %r
-	 *	jmp[l]	[%r + offset], %s
-	 * target address is (base << 10) + offset.
-	 */
-	if(res == 0
-	&& inst->ident == SPARC_JMPL__LT_S__P__D_RT___S
-	&& SPARC_JMPL__LT_S__P__D_RT___S_x_x_i != 0) {
-
-		// get information
-		patmos_inst_t *old_inst = inst;
-		t::uint32 rs1 = SPARC_JMPL__LT_S__P__D_RT___S_x_x_rs1_idx;
-		t::int32 offset = SPARC_JMPL__LT_S__P__D_RT___S_x_x_rs2_val;
-
-		// get previous instructions
-		otawa::Inst *prev = this->prevInst();
-		if(prev) {
-			inst = patmos_decode(proc.leonDecoder(), patmos_address_t(prev->address()));
-			if(inst->ident == SPARC_SETHI_D__S
-			&& rs1 == SPARC_SETHI_D__S_x_x_rd_idx )
-				target_addr = (SPARC_SETHI_D__S_x_x_imm22 << 10) + offset;
-			patmos_free_inst(inst);
-		}
-
-		// restore
-		inst = old_inst;
-	}
 
 	// Return result
 	patmos_free_inst(inst);
@@ -747,7 +702,7 @@ patmos_address_t BranchInst::decodeTargetAddress(void) {
 
 
 // Platform definition
-static hard::Platform::Identification PFID("leon-*-*");
+static hard::Platform::Identification PFID("patmos-*-*");
 
 
 
@@ -778,6 +733,7 @@ static hard::Platform::Identification PFID("leon-*-*");
 
 // convert a gliss reg info into one or several otawa Registers,
 // in and out are supposed initialized by the caller
+/*
 static void translate_gliss_reg_info(otawa_patmos_reg_t reg_info, elm::genstruct::Vector<hard::Register *> &in, elm::genstruct::Vector<hard::Register *> &out)
 {
 	if (reg_info == END_REG)
@@ -842,18 +798,18 @@ static void translate_gliss_reg_info(otawa_patmos_reg_t reg_info, elm::genstruct
 		}
 	}
 }
-
+*/
 
 /**
  */
 void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard::Register *> *in,
 	elm::genstruct::AllocatedTable<hard::Register *> *out)
 {
-
+/*
 	// Decode instruction
 	patmos_inst_t *inst;
-	inst = patmos_decode(_leonDecoder, oinst->address().address());
-	if(inst->ident == SPARC_UNKNOWN)
+	inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	if(inst->ident == PATMOS_UNKNOWN)
 	{
 		patmos_free_inst(inst);
 		return;
@@ -879,9 +835,10 @@ void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard
 
 	// Free instruction
 	patmos_free_inst(inst);
+*/
 }
 
-// otawa::loader::leon::Loader class
+// otawa::loader::patmos::Loader class
 class Loader: public otawa::Loader {
 public:
 	Loader(void);
@@ -897,14 +854,14 @@ public:
 static string table[] = {
 	"elf_20"
 };
-static elm::genstruct::Table<string> leon_aliases(table, 1);
+static elm::genstruct::Table<string> patmos_aliases(table, 1);
 
 
 /**
  * Build a new loader.
  */
 Loader::Loader(void)
-: otawa::Loader("leon", Version(2, 0, 0), OTAWA_LOADER_VERSION, leon_aliases) {
+: otawa::Loader("patmos", Version(2, 0, 0), OTAWA_LOADER_VERSION, patmos_aliases) {
 }
 
 
@@ -914,7 +871,7 @@ Loader::Loader(void)
  */
 CString Loader::getName(void) const
 {
-	return "leon";
+	return "patmos";
 }
 
 
@@ -946,7 +903,7 @@ otawa::Process *Loader::load(Manager *man, CString path, const PropList& props)
  */
 otawa::Process *Loader::create(Manager *man, const PropList& props)
 {
-	//cout << "INFO: using leon loader.\n";	// !!DEBUG!!
+	//cout << "INFO: using patmos loader.\n";	// !!DEBUG!!
 	return new Process(man, new Platform(props), props);
 }
 
@@ -987,7 +944,7 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 #define _UGT		otawa::sem::UGT
 #define _WR_SAVE()		block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_SAVE))
 #define _WR_RESTORE()	block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_RESTORE))
-#include "otawa_sem.h"
+// #include "otawa_sem.h"
 
 
 namespace otawa { namespace patmos {
@@ -995,14 +952,14 @@ namespace otawa { namespace patmos {
 /**
  */
 void Process::getSem(::otawa::Inst *oinst, ::otawa::sem::Block& block) {
-	patmos_inst_t *inst;
-	inst = patmos_decode(_leonDecoder, oinst->address().address());
-	patmos_sem(inst, block);
-	patmos_free_inst(inst);
+	//patmos_inst_t *inst;
+	//inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	//patmos_sem(inst, block);
+	//patmos_free_inst(inst);
 }
 
 } }	// namespace otawa::patmos
 
 // Patmos GLISS Loader entry point
 otawa::patmos::Loader OTAWA_LOADER_HOOK;
-otawa::patmos::Loader& leon_plugin = OTAWA_LOADER_HOOK;
+otawa::patmos::Loader& patmos_plugin = OTAWA_LOADER_HOOK;
