@@ -2,6 +2,8 @@
 OTAWA_PATH=$(PWD)/../../otawa-core
 GLISS_PATH=$(PWD)/../gliss2
 
+.PHONY: all config clean install
+
 all:
 	cd patmos && $(MAKE)
 	cd build && $(MAKE)

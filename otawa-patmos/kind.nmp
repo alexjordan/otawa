@@ -19,6 +19,9 @@ let IS_SHIFT	= 0x00001000
 let IS_TRAP	= 0x00002000
 let IS_SPECIAL	= 0x00010000
 
+let IS_DELAYED  = 0x01000000
+let IS_LOCAL    = 0x02000000
+
 
 // ALU operations, multiply
 extend ALUi_fmt
@@ -63,7 +66,10 @@ extend Pred_fmt
 
 extend CFLi_fmt, CFLrs_fmt, CFLrt_fmt
 	otawa_kind = IS_CONTROL | if func.is_call then IS_CALL else NO_KIND endif
+	                        | if d then IS_DELAYED else NO_KIND endif
+				| if func.is_local then IS_LOCAL else NO_KIND endif
 
 extend CFLri_fmt
-	otawa_kind = IS_CONTROL | IS_RETURN
+	otawa_kind = IS_CONTROL | IS_RETURN 
+	                        | if d then IS_DELAYED else NO_KIND endif
 
