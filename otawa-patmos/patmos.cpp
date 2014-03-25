@@ -12,15 +12,15 @@
 #include <elm/genstruct/SortedSLList.h>
 #include <otawa/sim/features.h>
 #include <otawa/prop/Identifier.h>
-#include "sparc.h"
+#include "patmos.h"
 
 
 extern "C"
 {
 	// gliss2 C include files
-	#include <sparc/api.h>
-	#include <sparc/id.h>
-	#include <sparc/macros.h>
+	#include <patmos/api.h>
+	#include <patmos/id.h>
+	#include <patmos/macros.h>
 
 	// generated code
 
@@ -51,7 +51,7 @@ using namespace otawa::hard;
 #define STRACE(m)	//cerr << m << io::endl
 
 
-namespace otawa { namespace sparc {
+namespace otawa { namespace patmos {
 
 // Platform class
 class Platform: public hard::Platform {
@@ -76,29 +76,29 @@ public:
 class SimState: public otawa::SimState
 {
 public:
-	SimState(Process *process, sparc_state_t *state, sparc_decoder_t *decoder, bool _free = false)
+	SimState(Process *process, patmos_state_t *state, patmos_decoder_t *decoder, bool _free = false)
 	: otawa::SimState(process), _leonState(state), _leonDecoder(decoder) {
 		ASSERT(process);
 		ASSERT(state);
 	}
 
 	virtual ~SimState(void) {
-		sparc_delete_state(_leonState);
+		patmos_delete_state(_leonState);
 	}
 
 	virtual void setSP(const Address& addr) { LEON_SYSPARM_REG32_SP(_leonState) = addr.offset(); }
 
-	inline sparc_state_t *leonState(void) const { return _leonState; }
+	inline patmos_state_t *leonState(void) const { return _leonState; }
 
 	virtual Inst *execute(Inst *oinst) {
 		ASSERTP(oinst, "null instruction pointer");
 
 		Address addr = oinst->address();
-		sparc_inst_t *inst;
+		patmos_inst_t *inst;
 		_leonState->nPC = addr.address();
-		inst = sparc_decode(_leonDecoder, _leonState->nPC);
-		sparc_execute(_leonState, inst);
-		sparc_free_inst(inst);
+		inst = patmos_decode(_leonDecoder, _leonState->nPC);
+		patmos_execute(_leonState, inst);
+		patmos_free_inst(inst);
 		if (_leonState->nPC == oinst->topAddress()) {
 			Inst *next = oinst->nextInst();
 			while (next && next->isPseudo())
@@ -112,8 +112,8 @@ public:
 	}
 
 private:
-	sparc_state_t *_leonState;
-	sparc_decoder_t *_leonDecoder;
+	patmos_state_t *_leonState;
+	patmos_decoder_t *_leonDecoder;
 };
 
 
@@ -140,14 +140,14 @@ public:
 	~Process();
 
 	virtual otawa::SimState *newState(void) {
-		sparc_state_t *s = sparc_new_state(_leonPlatform);
+		patmos_state_t *s = patmos_new_state(_leonPlatform);
 		ASSERTP(s, "otawa::leon::Process::newState(), cannot create a new leon_state");
 		return new SimState(this, s, _leonDecoder, true);
 	}
 
 	virtual int instSize(void) const { return 4; }
 	void decodeRegs( Inst *inst, elm::genstruct::AllocatedTable<hard::Register *> *in, elm::genstruct::AllocatedTable<hard::Register *> *out);
-	inline sparc_decoder_t *leonDecoder() { return _leonDecoder;}
+	inline patmos_decoder_t *leonDecoder() { return _leonDecoder;}
 	inline void *leonPlatform(void) const { return _leonPlatform; }
 	void setup(void);
 	void getSem(otawa::Inst *inst, sem::Block& block);
@@ -176,14 +176,14 @@ protected:
 	friend class Segment;
 	virtual otawa::Inst *decode(Address addr);
 	virtual gel_file_t *gelFile(void) { return _gelFile; }
-	virtual sparc_memory_t *leonMemory(void) { return _leonMemory; }
+	virtual patmos_memory_t *leonMemory(void) { return _leonMemory; }
 
 private:
 	otawa::Inst *_start;
 	hard::Platform *_platform;
-	sparc_platform_t *_leonPlatform;
-	sparc_memory_t *_leonMemory;
-	sparc_decoder_t *_leonDecoder;
+	patmos_platform_t *_leonPlatform;
+	patmos_memory_t *_leonMemory;
+	patmos_decoder_t *_leonDecoder;
 	int argc;
 	char **argv, **envp;
 	bool no_stack;
@@ -209,9 +209,9 @@ public:
 	 */
 	void dump(io::Output& out) {
 		char out_buffer[200];
-		sparc_inst_t *inst = sparc_decode(proc.leonDecoder(), _addr);
-		sparc_disasm(out_buffer, inst);
-		sparc_free_inst(inst);
+		patmos_inst_t *inst = patmos_decode(proc.leonDecoder(), _addr);
+		patmos_disasm(out_buffer, inst);
+		patmos_free_inst(inst);
 		out << out_buffer;
 	}
 
@@ -253,7 +253,7 @@ protected:
 	Process &proc;
 
 private:
-	sparc_address_t _addr;
+	patmos_address_t _addr;
 	bool isRegsDone;
 };
 
@@ -264,9 +264,9 @@ public:
 
 	inline BranchInst(Process& process, kind_t kind, Address addr)
 	: Inst(process, kind, addr), _target(0), isTargetDone(false) {
-		sparc_inst_t *inst;
-		inst = sparc_decode(proc.leonDecoder(), (sparc_address_t)address());
-		otawa::delayed_t delay = sparc_delayed(inst);
+		patmos_inst_t *inst;
+		inst = patmos_decode(proc.leonDecoder(), (patmos_address_t)address());
+		otawa::delayed_t delay = patmos_delayed(inst);
 		if(delay != otawa::DELAYED_None)
 			otawa::DELAYED(this) = delay;
 	}
@@ -275,7 +275,7 @@ public:
 
 	virtual otawa::Inst *target() {
 		if (!isTargetDone) {
-			sparc_address_t a = decodeTargetAddress();
+			patmos_address_t a = decodeTargetAddress();
 			if (a)
 				_target = process().findInstAt(a);
 			isTargetDone = true;
@@ -284,7 +284,7 @@ public:
 	}
 
 protected:
-	virtual sparc_address_t decodeTargetAddress(void);
+	virtual patmos_address_t decodeTargetAddress(void);
 
 private:
 	otawa::Inst *_target;
@@ -338,7 +338,7 @@ const hard::MeltedBank Platform::MISC_bank("MISC", &Platform::PSR_reg, &Platform
 /**
  * Identification of the default platform.
  */
-const Platform::Identification Platform::ID("sparc-elf-");
+const Platform::Identification Platform::ID("patmos-elf-");
 
 
 /**
@@ -405,13 +405,13 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 	ASSERTP(platform, "platform required");
 
 	// gliss2 leon structs
-	_leonPlatform = sparc_new_platform();
+	_leonPlatform = patmos_new_platform();
 	ASSERTP(_leonPlatform, "otawa::leon::Process::Process(..), cannot create a leon_platform");
-	_leonDecoder = sparc_new_decoder(_leonPlatform);
+	_leonDecoder = patmos_new_decoder(_leonPlatform);
 	ASSERTP(_leonDecoder, "otawa::leon::Process::Process(..), cannot create a leon_decoder");
-	_leonMemory = sparc_get_memory(_leonPlatform, SPARC_MAIN_MEMORY);
+	_leonMemory = patmos_get_memory(_leonPlatform, SPARC_MAIN_MEMORY);
 	ASSERTP(_leonMemory, "otawa::leon::Process::Process(..), cannot get main leon_memory");
-	sparc_lock_platform(_leonPlatform);
+	patmos_lock_platform(_leonPlatform);
 
 	// build arguments
 	char no_name[1] = { 0 };
@@ -440,8 +440,8 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 /**
  */
 Process::~Process() {
-	sparc_delete_decoder(_leonDecoder);
-	sparc_unlock_platform(_leonPlatform);
+	patmos_delete_decoder(_leonDecoder);
+	patmos_unlock_platform(_leonPlatform);
 	if(_gelFile)
 		gel_close(_gelFile);
 }
@@ -533,19 +533,19 @@ File *Process::loadFile(elm::CString path) {
 
 	// initialize the environment
 	ASSERTP(_leonPlatform, "invalid leon_platform !");
-	sparc_env_t *env = sparc_get_sys_env(_leonPlatform);
+	patmos_env_t *env = patmos_get_sys_env(_leonPlatform);
 	ASSERT(env);
 	env->argc = argc;
 	env->argv = argv;
 	env->envp = envp;
 
 	// load the binary
-	if(sparc_load_platform(_leonPlatform, (char *)&path) == -1)
+	if(patmos_load_platform(_leonPlatform, (char *)&path) == -1)
 		throw LoadException(_ << "cannot load \"" << path << "\".");
 
 	// get the initial state
 	SimState *state = dynamic_cast<SimState *>(newState());
-	sparc_state_t *leonState = state->leonState();
+	patmos_state_t *leonState = state->leonState();
 	if (!leonState)
 		throw LoadException("invalid leon_state !");
 
@@ -615,7 +615,7 @@ File *Process::loadFile(elm::CString path) {
 // Memory read
 #define GET(t, s) \
 	void Process::get(Address at, t& val) { \
-			val = sparc_mem_read##s(_leonMemory, at.address()); \
+			val = patmos_mem_read##s(_leonMemory, at.address()); \
 			/*cerr << "val = " << (void *)(int)val << " at " << at << io::endl;*/ \
 	}
 GET(signed char, 8);
@@ -633,7 +633,7 @@ GET(Address, 32);
  */
 void Process::get(Address at, string& str) {
 	Address base = at;
-	while(!sparc_mem_read8(_leonMemory, at.address()))
+	while(!patmos_mem_read8(_leonMemory, at.address()))
 		at = at + 1;
 	int len = at - base;
 	char buf[len];
@@ -645,7 +645,7 @@ void Process::get(Address at, string& str) {
 /**
  */
 void Process::get(Address at, char *buf, int size)
-	{ sparc_mem_read(_leonMemory, at.address(), buf, size); }
+	{ patmos_mem_read(_leonMemory, at.address(), buf, size); }
 
 
 /**
@@ -654,9 +654,9 @@ otawa::Inst *Process::decode(Address addr) {
 	//cerr << "DECODING: " << addr << io::endl;
 
 	// Decode the instruction
-	sparc_inst_t *inst;
+	patmos_inst_t *inst;
 	TRACE("ADDR " << addr);
-	inst = sparc_decode(_leonDecoder, (sparc_address_t)addr.address());
+	inst = patmos_decode(_leonDecoder, (patmos_address_t)addr.address());
 
 	// Build the instruction
 	Inst::kind_t kind = 0;
@@ -666,7 +666,7 @@ otawa::Inst *Process::decode(Address addr) {
 	if(inst->ident == SPARC_UNKNOWN)
 		TRACE("UNKNOWN !!!\n" << result);
 	else
-		kind = sparc_kind(inst);
+		kind = patmos_kind(inst);
 
 	// detect the false branch instructions
 	/*switch (inst->ident)
@@ -692,23 +692,23 @@ otawa::Inst *Process::decode(Address addr) {
 
 	// cleanup
 	ASSERT(result);
-	sparc_free_inst(inst);
+	patmos_free_inst(inst);
 	return result;
 }
 
 
 /**
  */
-sparc_address_t BranchInst::decodeTargetAddress(void) {
+patmos_address_t BranchInst::decodeTargetAddress(void) {
 
 	// Decode the instruction
-	sparc_inst_t *inst;
+	patmos_inst_t *inst;
 	TRACE("ADDR " << addr);
-	inst = sparc_decode(proc.leonDecoder(), (sparc_address_t)address());
+	inst = patmos_decode(proc.leonDecoder(), (patmos_address_t)address());
 
 	// retrieve the target addr from the nmp otawa_target attribute
 	Address target_addr;
-	sparc_address_t res = sparc_target(inst);
+	patmos_address_t res = patmos_target(inst);
 	if(res != 0)
 		target_addr = res;
 
@@ -722,18 +722,18 @@ sparc_address_t BranchInst::decodeTargetAddress(void) {
 	&& SPARC_JMPL__LT_S__P__D_RT___S_x_x_i != 0) {
 
 		// get information
-		sparc_inst_t *old_inst = inst;
+		patmos_inst_t *old_inst = inst;
 		t::uint32 rs1 = SPARC_JMPL__LT_S__P__D_RT___S_x_x_rs1_idx;
 		t::int32 offset = SPARC_JMPL__LT_S__P__D_RT___S_x_x_rs2_val;
 
 		// get previous instructions
 		otawa::Inst *prev = this->prevInst();
 		if(prev) {
-			inst = sparc_decode(proc.leonDecoder(), sparc_address_t(prev->address()));
+			inst = patmos_decode(proc.leonDecoder(), patmos_address_t(prev->address()));
 			if(inst->ident == SPARC_SETHI_D__S
 			&& rs1 == SPARC_SETHI_D__S_x_x_rd_idx )
 				target_addr = (SPARC_SETHI_D__S_x_x_imm22 << 10) + offset;
-			sparc_free_inst(inst);
+			patmos_free_inst(inst);
 		}
 
 		// restore
@@ -741,7 +741,7 @@ sparc_address_t BranchInst::decodeTargetAddress(void) {
 	}
 
 	// Return result
-	sparc_free_inst(inst);
+	patmos_free_inst(inst);
 	return target_addr;
 }
 
@@ -778,7 +778,7 @@ static hard::Platform::Identification PFID("leon-*-*");
 
 // convert a gliss reg info into one or several otawa Registers,
 // in and out are supposed initialized by the caller
-static void translate_gliss_reg_info(otawa_sparc_reg_t reg_info, elm::genstruct::Vector<hard::Register *> &in, elm::genstruct::Vector<hard::Register *> &out)
+static void translate_gliss_reg_info(otawa_patmos_reg_t reg_info, elm::genstruct::Vector<hard::Register *> &in, elm::genstruct::Vector<hard::Register *> &out)
 {
 	if (reg_info == END_REG)
 		return;
@@ -851,18 +851,18 @@ void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard
 {
 
 	// Decode instruction
-	sparc_inst_t *inst;
-	inst = sparc_decode(_leonDecoder, oinst->address().address());
+	patmos_inst_t *inst;
+	inst = patmos_decode(_leonDecoder, oinst->address().address());
 	if(inst->ident == SPARC_UNKNOWN)
 	{
-		sparc_free_inst(inst);
+		patmos_free_inst(inst);
 		return;
 	}
 
 	// get register infos
 	elm::genstruct::Vector<hard::Register *> reg_in;
 	elm::genstruct::Vector<hard::Register *> reg_out;
-	otawa_sparc_reg_t *addr_reg_info = sparc_used_regs(inst);
+	otawa_patmos_reg_t *addr_reg_info = patmos_used_regs(inst);
 	if(addr_reg_info)
 		for (int i = 0; addr_reg_info[i] != END_REG; i++ )
 			translate_gliss_reg_info(addr_reg_info[i], reg_in, reg_out);
@@ -878,7 +878,7 @@ void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard
 		out->set(i, reg_out.get(i));
 
 	// Free instruction
-	sparc_free_inst(inst);
+	patmos_free_inst(inst);
 }
 
 // otawa::loader::leon::Loader class
@@ -950,7 +950,7 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 	return new Process(man, new Platform(props), props);
 }
 
-} }	// otawa::sparc
+} }	// otawa::patmos
 
 // semantics information
 #define _ADD(d, s1, s2)		block.add(otawa::sem::add(d, s1, s2))
@@ -969,10 +969,10 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 #define _SETI(d, i)			block.add(otawa::sem::seti(d, i))
 #define _SET(d, s)			block.add(otawa::sem::set(d, s))
 #define _SCRATCH(d)			block.add(otawa::sem::scratch(d))
-#define _R(n)				otawa::sparc::Platform::R_bank[n]->platformNumber()
-#define _F(n)				otawa::sparc::Platform::R_bank[n]->platformNumber()
-#define _PSR				otawa::sparc::Platform::PSR_reg.platformNumber()
-#define _FSR				otawa::sparc::Platform::FSR_reg.platformNumber()
+#define _R(n)				otawa::patmos::Platform::R_bank[n]->platformNumber()
+#define _F(n)				otawa::patmos::Platform::R_bank[n]->platformNumber()
+#define _PSR				otawa::patmos::Platform::PSR_reg.platformNumber()
+#define _FSR				otawa::patmos::Platform::FSR_reg.platformNumber()
 #define _NO_COND	otawa::sem::NO_COND
 #define _EQ			otawa::sem::EQ
 #define _LT			otawa::sem::LT
@@ -985,24 +985,24 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 #define _ULE		otawa::sem::ULE
 #define _UGE		otawa::sem::UGE
 #define _UGT		otawa::sem::UGT
-#define _WR_SAVE()		block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::sparc::SPEC_SAVE))
-#define _WR_RESTORE()	block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::sparc::SPEC_RESTORE))
+#define _WR_SAVE()		block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_SAVE))
+#define _WR_RESTORE()	block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_RESTORE))
 #include "otawa_sem.h"
 
 
-namespace otawa { namespace sparc {
+namespace otawa { namespace patmos {
 
 /**
  */
 void Process::getSem(::otawa::Inst *oinst, ::otawa::sem::Block& block) {
-	sparc_inst_t *inst;
-	inst = sparc_decode(_leonDecoder, oinst->address().address());
-	sparc_sem(inst, block);
-	sparc_free_inst(inst);
+	patmos_inst_t *inst;
+	inst = patmos_decode(_leonDecoder, oinst->address().address());
+	patmos_sem(inst, block);
+	patmos_free_inst(inst);
 }
 
-} }	// namespace otawa::sparc
+} }	// namespace otawa::patmos
 
-// PowerPC GLISS Loader entry point
-otawa::sparc::Loader OTAWA_LOADER_HOOK;
-otawa::sparc::Loader& leon_plugin = OTAWA_LOADER_HOOK;
+// Patmos GLISS Loader entry point
+otawa::patmos::Loader OTAWA_LOADER_HOOK;
+otawa::patmos::Loader& leon_plugin = OTAWA_LOADER_HOOK;

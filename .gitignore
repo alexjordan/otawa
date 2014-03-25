@@ -1,10 +1,13 @@
 # Ignore build directories
 build/
 patmos/disasm
+patmos/sim
 patmos/include
 patmos/src
 
 # Ignore generated files
-*.igl
+*.irg
 *.nml
 
+# Ignore temp files
+.*.swp

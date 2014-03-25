@@ -2,174 +2,62 @@
 // otawa_kind of instructions
 // Used to know in which functional unit the instruction is executed
 
-let NO_KIND		= 0x00000000
-let IS_COND		= 0x00000001
+let NO_KIND	= 0x00000000
+let IS_COND	= 0x00000001
 let IS_CONTROL	= 0x00000002
-let IS_CALL		= 0x00000004	// save PC before branching
+let IS_CALL	= 0x00000004	// save PC before branching
 let IS_RETURN	= 0x00000008
-let IS_MEM		= 0x00000010
-let IS_LOAD		= 0x00000020
+let IS_MEM	= 0x00000010
+let IS_LOAD	= 0x00000020
 let IS_STORE	= 0x00000040
-let IS_INT		= 0x00000080
+let IS_INT	= 0x00000080
 let IS_FLOAT	= 0x00000100
-let IS_ALU		= 0x00000200	// basic arithmetic operations (like "+", "-")
-let IS_MUL		= 0x00000400
-let IS_DIV		= 0x00000800
+let IS_ALU	= 0x00000200	// basic arithmetic operations (like "+", "-")
+let IS_MUL	= 0x00000400
+let IS_DIV	= 0x00000800
 let IS_SHIFT	= 0x00001000
-let IS_TRAP		= 0x00002000
+let IS_TRAP	= 0x00002000
 let IS_SPECIAL	= 0x00010000
 
-let IS_READ		= 0x80000000
-let IS_WRITE	= 0x40000000
-let IS_ASI		= 0x20000000	// alternate space accesses
-let IS_ATOM		= 0x10000000	// atomical operations
-let IS_NOP		= 0x08000000	// no operation (NOP)
-let IS_LOGIC	= 0x04000000	// bit manipulation (no shift)
-let IS_CC_UPD	= 0x02000000	// condition code update
-let IS_TAGGED	= 0x01000000	// working with tagged integer
-let IS_ANNUL	= 0x00400000	// bit annul set in delayed branches
 
-// FPU specific
-let IS_FSQRT	= 0x00200000
-let IS_DOUBLE	= 0x00100000
+// ALU operations, multiply
+extend ALUi_fmt, ALUl_fmt, ALUr_fmt
+	otawa_kind = IS_INT | IS_ALU | if func.is_shift then IS_SHIFT else NO_KIND endif
 
-// special instruction 
-let IS_SAVE		= 0x00200000
-let IS_RESTORE	= 0x00100000
-
-
-
-extend ldsb, ldsh, ldub, lduh, ld, ldd
-	otawa_kind = IS_MEM | IS_LOAD | IS_INT
-extend ldd
-	otawa_kind = IS_MEM | IS_LOAD | IS_INT | IS_DOUBLE
-extend ldsba, ldsha, lduba, lduha, lda
-	otawa_kind = IS_MEM | IS_LOAD | IS_INT | IS_ASI
-extend ldda
-	otawa_kind = IS_MEM | IS_LOAD | IS_INT | IS_ASI | IS_DOUBLE
-
-extend stb, sth, st
-	otawa_kind = IS_MEM | IS_STORE | IS_INT
-extend std
-	otawa_kind = IS_MEM | IS_STORE | IS_INT | IS_DOUBLE
-extend stba, stha, sta, stda
-	otawa_kind = IS_MEM | IS_STORE | IS_INT | IS_ASI
-extend stda
-	otawa_kind = IS_MEM | IS_STORE | IS_INT | IS_ASI | IS_DOUBLE
-
-extend ldf, lddf, ldfsr
-	otawa_kind = IS_MEM | IS_LOAD | IS_FLOAT
-extend lddf
-	otawa_kind = IS_MEM | IS_LOAD | IS_FLOAT | IS_DOUBLE
-
-extend stf, stdf, stfsr
-	otawa_kind = IS_MEM | IS_STORE | IS_FLOAT
-extend stdf
-	otawa_kind = IS_MEM | IS_STORE | IS_FLOAT | IS_DOUBLE
-
-extend ldstub, swap
-	otawa_kind = IS_MEM | IS_LOAD | IS_STORE | IS_INT | IS_ATOM
-extend ldstuba, swapa
-	otawa_kind = IS_MEM | IS_LOAD | IS_STORE | IS_INT | IS_ATOM | IS_ASI
-
-
-extend sethi
-	otawa_kind = IS_INT
-
-extend and, andn, or, orn, xor, xnor
-	otawa_kind = IS_ALU | IS_INT
-extend andcc, andncc, orcc, orncc, xorcc, xnorcc
-	otawa_kind = IS_ALU | IS_INT | IS_CC_UPD
-
-extend sll, srl, sra
-	otawa_kind = IS_SHIFT | IS_INT
-
-extend add, addx, sub, subx
-	otawa_kind = IS_INT | IS_ALU
-extend addcc, addxcc, subcc, subxcc
-	otawa_kind = IS_INT | IS_ALU | IS_CC_UPD
-
-extend taddcc, tsubcc
-	otawa_kind = IS_INT | IS_TAGGED | IS_ALU | IS_CC_UPD
-extend taddcctv, tsubcctv
-	otawa_kind = IS_INT | IS_TAGGED | IS_ALU | IS_CC_UPD | IS_TRAP
-
-extend umul, smul
+extend ALUm_fmt
 	otawa_kind = IS_INT | IS_MUL
-extend mulscc
-	otawa_kind = IS_INT | IS_CC_UPD
-extend umulcc, smulcc
-	otawa_kind = IS_INT | IS_MUL | IS_CC_UPD
 
-extend udiv, sdiv
-	otawa_kind = IS_INT | IS_DIV
+// Comparisons
+extend ALUc_fmt, ALUci_fmt
+	otawa_kind = IS_INT | IS_COND
 
-extend udivcc, sdivcc
-	otawa_kind = IS_INT | IS_DIV | IS_CC_UPD
-
-extend save
-	otawa_kind = IS_INT | IS_SPECIAL | IS_SAVE 
-extend restore
-	otawa_kind = IS_INT | IS_SPECIAL | IS_RESTORE
-
-extend bicc
+// Predicate operations
+extend ALUp_fmt, ALUb_fmt
 	otawa_kind = IS_INT
-		| if cond.value == 0 then 0 else IS_CONTROL endif
-		| if cond.value == 8 then 0 else IS_COND endif
-		| if a == 1 then IS_ANNUL else 0 endif
 
-extend fbfcc
-	otawa_kind = IS_FLOAT
-	| if cond.value == 0 then 0 else IS_CONTROL endif
-	| if cond.value == 8 then 0 else IS_COND endif
-	| if a == 1 then IS_ANNUL else 0 endif
+// Special instructions
+extend SPCw_fmt
+	otawa_kind = IS_MEM | IS_SPECIAL
 
-extend call
-	otawa_kind = IS_CONTROL | IS_CALL
-
-extend jmpl
-	otawa_kind =
-		IS_CONTROL |
-		(if rd.value == 0 && i == 1 && rs2.value == 8 && (rs1.value == 15 || rs1.value == 31) then
-			IS_RETURN
-		else
-			IS_CALL
-		endif)
-
-extend rdasr	// also stbar and rdy
-	otawa_kind = IS_INT | IS_SPECIAL | (if rs1.value == 15 && rd.value == NO_KIND then IS_MEM else IS_READ endif)
-
-extend rdpsr, rdwim, rdtbr
-	otawa_kind = IS_INT | IS_SPECIAL | IS_READ
-
-extend wrasr, wrpsr, wrwim	// also wry
-	otawa_kind = IS_INT | IS_SPECIAL | IS_WRITE
+extend SPCt_fmt, SPCf_fmt
+	otawa_kind = IS_INT | IS_SPECIAL
 
 
-// now the floating point instructions
+// Load and store
+extend LDT_fmt
+	otawa_kind = IS_INT | IS_MEM | IS_LOAD
 
-extend fitos, fitod, fstoi, fdtoi, fstod, fdtos
-	otawa_kind = IS_FLOAT
-extend fmovs, fnegs, fabss
-	otawa_kind = IS_FLOAT
+extend STT_fmt
+	otawa_kind = IS_INT | IS_MEM | IS_STORE
 
-extend fadds, faddd, fsubs, fsubd
-	otawa_kind = IS_FLOAT | IS_ALU
-extend fmuls, fmuld, fsmuld
-	otawa_kind = IS_FLOAT | IS_MUL
+// Stack control
+extend STCi_fmt, STCr_fmt
+	otawa_kind = IS_INT | IS_MEM | IS_SPECIAL
 
-extend fdivs 
-	otawa_kind = IS_FLOAT | IS_DIV
-extend fdivd
-	otawa_kind = IS_FLOAT | IS_DIV | IS_DOUBLE
-extend fsqrts
-	otawa_kind = IS_FLOAT | IS_DIV | IS_FSQRT
-extend fsqrtd
-	otawa_kind = IS_FLOAT  | IS_DIV | IS_FSQRT | IS_DOUBLE
+// Control flow
+extend CFLi_fmt, CFLrs_fmt, CFLrt_fmt
+	otawa_kind = IS_CONTROL | if func.is_call then IS_CALL else NO_KIND endif
 
-extend fcmps, fcmpd
-	otawa_kind = IS_FLOAT | IS_CC_UPD
-
-extend ticc
-	otawa_kind = IS_CONTROL | IS_TRAP
+extend CFLri_fmt
+	otawa_kind = IS_CONTROL | IS_RETURN
 

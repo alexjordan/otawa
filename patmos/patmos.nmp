@@ -205,6 +205,8 @@ op ALU_op(opc: card(3))
   is_add = (opc == 0)
   // True if this is a 'sub' opcode
   is_sub = (opc == 1)
+  // True if this is any kind of shift operation
+  is_shift = (opc == 3 || opc == 4 || opc == 5)
 
 op ALU_extop(opc: card(4))
   syntax = 
@@ -226,6 +228,8 @@ op ALU_extop(opc: card(4))
   image = format("%4b", opc)
   // True if this is a 'sub' opcode
   is_sub = (opc == 1)
+  // True if this is any kind of shift operation
+  is_shift = (opc == 3 || opc == 4 || opc == 5 || opc == 12 || opc == 13)
 
 op ALUm_op(opc: card(4))
   syntax = 
@@ -472,7 +476,10 @@ op CFL_op(opc: card(2))
   image = format("%2b", opc)
   // Does this use a PC relative or an absolute immediate?
   is_PCRel = (opc == 1)
-
+  // Is this a call instruction
+  is_call = (opc == 0)
+  // Is this a trap instruction
+  is_trap = (opc == 3)
 
 op CFLret_op(opc: card(2))
   syntax = 
