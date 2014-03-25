@@ -1,5 +1,5 @@
 
-OTAWA_PATH=$(PWD)/../../otawa-core
+OTAWA_PATH=$(PWD)/../site
 GLISS_PATH=$(PWD)/../gliss2
 
 .PHONY: all config clean install

@@ -598,7 +598,7 @@ File *Process::loadFile(elm::CString path) {
 // Memory read
 #define GET(t, s) \
 	void Process::get(Address at, t& val) { \
-			val = patmos_mem_read##s(_patmosMemory, at.address()); \
+			val = patmos_mem_read##s(_patmosMemory, at.offset()); \
 			/*cerr << "val = " << (void *)(int)val << " at " << at << io::endl;*/ \
 	}
 GET(signed char, 8);
@@ -616,7 +616,7 @@ GET(Address, 32);
  */
 void Process::get(Address at, string& str) {
 	Address base = at;
-	while(!patmos_mem_read8(_patmosMemory, at.address()))
+	while(!patmos_mem_read8(_patmosMemory, at.offset()))
 		at = at + 1;
 	int len = at - base;
 	char buf[len];
@@ -628,7 +628,7 @@ void Process::get(Address at, string& str) {
 /**
  */
 void Process::get(Address at, char *buf, int size)
-	{ patmos_mem_read(_patmosMemory, at.address(), buf, size); }
+	{ patmos_mem_read(_patmosMemory, at.offset(), buf, size); }
 
 
 /**
@@ -639,7 +639,7 @@ otawa::Inst *Process::decode(Address addr) {
 	// Decode the instruction
 	patmos_inst_t *inst;
 	TRACE("ADDR " << addr);
-	inst = patmos_decode(_patmosDecoder, (patmos_address_t)addr.address());
+	inst = patmos_decode(_patmosDecoder, (patmos_address_t)addr.offset());
 
 	// Build the instruction
 	Inst::kind_t kind = 0;
