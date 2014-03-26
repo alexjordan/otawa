@@ -2,6 +2,8 @@
 OTAWA_PATH=$(PWD)/../site
 GLISS_PATH=$(PWD)/../gliss2
 
+-include Makefile.cfg
+
 .PHONY: all config clean install
 
 all:
