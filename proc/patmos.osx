@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<otawa-script
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+<name>Patmos</name>
+
+<info>
+	<h1>PatMOS</h1>
+	
+	<h2>Description</h2>
+	<p>This is the OTAWA implementation of WCET computation for T-CREST / PatMOS processor.
+	Refer <a href="http://www.t-crest.org/">here</a> for more detils.</p>
+	
+	<h2>Implementation State</h2>
+	List of what is implemented so far:
+	<ul>
+	</ul>
+</info>
+
+
+<id>
+	<arch>patmos</arch>
+	<abi>eabi</abi>
+	<mach>patmos</mach>
+</id>
+
+
+<configuration>
+</configuration>
+
+<platform>
+	<xi:include href="patmos/pipeline.xml"/>
+	<!--xi:include href="tricore/cache.xml"/-->
+	<!--xi:include href="tricore/mem.xml"/-->
+</platform>
+
+<script>
+	<!--step require="otawa::VIRTUALIZED_CFG_FEATURE"/-->
+	<step processor="tcrest::patmos::BBTimer"/>
+	<step require="otawa::ipet::WCET_FEATURE"/>
+</script>
+
+
+</otawa-script>
+	
