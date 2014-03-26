@@ -50,7 +50,7 @@ $(ARCH).irg: $(ARCH).nml
 src include: $(ARCH).irg
 	$(GLISS_PREFIX)/gep/gep $(GFLAGS) $< -S
 
-lib: src include/$(ARCH)/config.h src/disasm.c
+lib: src include/$(ARCH)/config.h src/disasm.c src/used_regs.c
 	(cd src; $(MAKE))
 
 $(ARCH)-disasm: lib
@@ -65,6 +65,9 @@ include/$(ARCH)/config.h: config.tpl
 
 src/disasm.c: $(ARCH).irg
 	$(GLISS_PREFIX)/gep/gliss-disasm $< -o $@ -c
+
+src/used_regs.c: $(ARCH).irg
+	$(GLISS_PREFIX)/gep/gliss-used-regs $< 
 
 distclean: clean
 	for d in $(SUBDIRS); do test -d $$d && (cd $$d; make distclean || exit 1); done

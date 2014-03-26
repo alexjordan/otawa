@@ -12,11 +12,11 @@ execute_process(COMMAND "${OTAWA_CONFIG}" --libs OUTPUT_VARIABLE OTAWA_LDFLAGS O
 execute_process(COMMAND "${OTAWA_CONFIG}" --prefix OUTPUT_VARIABLE OTAWA_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # internals
-set(ARCH			"patmos")
-set(TARGET			"patmos")
+set(ARCH		"patmos")
+set(TARGET		"patmos")
 set(TARGET_PATH		"${CMAKE_SOURCE_DIR}/../${TARGET}/" CACHE PATH "patmos GLISS2 directory")
 set(GLISS_PATH		"${CMAKE_SOURCE_DIR}/../gliss2" CACHE PATH "GLISS v2 source directory")
-set(ELF_NUM			"48875")
+set(ELF_NUM		"48875")
 set(TARGET_LIB		"${TARGET_PATH}/src/lib${TARGET}.a")
 set(TARGET_INC		"${TARGET_PATH}/include")
 set(TARGET_IRG		"${TARGET_PATH}/${TARGET}.irg")
@@ -24,7 +24,7 @@ set(GLISS_ATTR		"${GLISS_PATH}/gep/gliss-attr")
 set(OTAWA_KIND 		"${PROJECT_BINARY_DIR}/otawa_kind.h")
 set(OTAWA_TARGET 	"${PROJECT_BINARY_DIR}/otawa_target.h")
 set(OTAWA_DELAYED 	"${PROJECT_BINARY_DIR}/otawa_delayed.h")
-set(OTAWA_USED_REGS "${PROJECT_BINARY_DIR}/otawa_used_regs.h")
+set(OTAWA_USED_REGS     "${PROJECT_BINARY_DIR}/otawa_used_regs.h")
 set(OTAWA_SEM		"${PROJECT_BINARY_DIR}/otawa_sem.h")
 message(STATUS "GLISS_ATTR = ${GLISS_ATTR}")
 

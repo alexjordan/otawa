@@ -13,10 +13,13 @@ type u16	= card(16)
 type u8         = card(8)
 
 // Constants
-let NUM_GPR	  = 32
-let NUM_SPR       = 16
-let NUM_PRR       = 8
-let MEM_ADDR_SIZE = 32
+let NUM_GPR	     = 32
+let NUM_SPR          = 16
+let NUM_PRR          = 8
+let MEM_ADDR_SIZE    = 32
+
+let ISRVECTOR_BASE   = 0xf0000180
+let STACK_CACHE_SIZE = 2048
 
 // Global memory
 mem M   [ MEM_ADDR_SIZE, u8 ]
@@ -27,6 +30,7 @@ mem M32 [ MEM_ADDR_SIZE >> 2, u32 ] alias = M[0]
 mem LM   [ MEM_ADDR_SIZE, u8 ]
 mem LM16 [ MEM_ADDR_SIZE >> 1, u16 ] alias = LM[0]
 mem LM32 [ MEM_ADDR_SIZE >> 2, u32 ] alias = LM[0]
+
 
 
 // ---- Registers ----
@@ -54,6 +58,14 @@ reg RTMP [ 1, word ]    alias = R[29]
 reg RFP  [ 1, word ]    alias = R[30]
 reg RSP  [ 1, word ]    alias = R[31]
 
+// Special hidden register for the current method base
+reg MCB  [ 1, word ]
+
+// Temporary variables used to pass arguments to and from operations
+var _OP1  [ 1, word ]
+var _OP2  [ 1, word ]
+var _OP3  [ 1, word ]
+var _RST  [ 1, word ]
 
 // Type for GPR operands
 mode reg_idx(i: card(5)) = R[i]
@@ -71,11 +83,14 @@ mode sreg_idx(i: card(4)) = S[i]
 mode pred_idx(i: card(3)) = SZ<i..i>
   syntax = format("$p%d", i)
   image = format("%3b", i)
+  is_zero = (i == 0)
 
 // Type for predicate operand (with negate bit)
 mode npred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
-  syntax = format("%s$p%d", if n then "!" else "" endif, i)
+  // Making the 'if n' outside of format to avoid compiler warnings about empty strings.
+  syntax = if n then format("!$p%d", i) else format("$p%d", i) endif
   image = format("%1b%3b", n, i)
+  always_true = (n == 0 && i == 0)
 
 // Type for predicate guards (predicate with negate bit used as guard)
 mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
@@ -91,10 +106,13 @@ mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
 
 
 // Macros to update register values
-macro setGPR(r, v) = if r != 0 then R[r] = v; endif
+macro setGPR(r, v) = if !r.is_zero then r = v; endif
+macro setSPR(s, v) = s = v
+macro setPRR(p, v) = if !p.is_zero then p = v; endif
 
-macro setPred(p, v) = if p != 0 then SZ<p> = v; endif
-
+// Macro for sign extending an unsigned value of size bits to a signed 32bit/64bit value
+macro sext32(value, size) = (coerce(int(32), value) << (32-size)) >> (32-size)
+macro sext64(value, size) = (coerce(int(64), value) << (64-size)) >> (64-size)
 
 // initialization, Patmos specific.
 op init()
@@ -123,8 +141,9 @@ op instruction (x : Patmos_instr)
       {
 	  x.action;
 	  PC = nPC;
-	  // TODO the PC is increased depending on the bundle/ALUl type
-	  nPC = nPC + 4;
+	  // Skip the immediate of the ALUl instructions
+	  // Bundles will increase the PC by 4 per operation
+	  nPC = nPC + (if x.is_long then 8 else 4 endif);
       }
 
 // All instructions are predicated
@@ -142,8 +161,12 @@ op Pred_instr = ALU_instr
 // Predicated instructions:
 // <bundle bit> <predicate> <instr>
 op Pred_fmt (b: bit, guard: gpred_idx, x: Pred_instr)
-  syntax = format("%s %s %s", if b then "{" else " " endif, guard, x)
+  syntax = format("%s %s %s", if b && !x.is_long then "{" else " " endif, guard, x)
   image = format("%1b %s %s", b, guard, x)
+  // True if this is an ALUl instruction
+  is_long = x.is_long
+  // True if this is bundled with the next operation (but false for ALUl)
+  is_bundled = b
   action = 
       {
 	if guard then
@@ -151,6 +174,8 @@ op Pred_fmt (b: bit, guard: gpred_idx, x: Pred_instr)
 	endif;
       }
 
+
+// Instruction formats
 
 op ALU_instr = ALUi_fmt
              | ALUl_fmt
@@ -208,6 +233,20 @@ op ALU_op(opc: card(3))
   is_sub = (opc == 1)
   // True if this is any kind of shift operation
   is_shift = (opc == 3 || opc == 4 || opc == 5)
+  action =
+    {
+      switch (opc)
+      {
+	case 0:  _RST = _OP1 + _OP2;
+	case 1:  _RST = _OP1 - _OP2;
+	case 2:  _RST = _OP1 ^ _OP2;
+	case 3:  _RST = _OP1 << _OP2;
+	case 4:  _RST = _OP1 >>> _OP2;
+	case 5:  _RST = _OP1 >> _OP2;
+	case 6:  _RST = _OP1 | _OP2;
+	case 7:  _RST = _OP1 & _OP2;
+      };
+    }
 
 op ALU_extop(opc: card(4))
   syntax = 
@@ -231,6 +270,24 @@ op ALU_extop(opc: card(4))
   is_sub = (opc == 1)
   // True if this is any kind of shift operation
   is_shift = (opc == 3 || opc == 4 || opc == 5 || opc == 12 || opc == 13)
+  action = 
+    {
+      switch (opc)
+      {
+	case 0:  _RST = _OP1 + _OP2;
+	case 1:  _RST = _OP1 - _OP2;
+	case 2:  _RST = _OP1 ^ _OP2;
+	case 3:  _RST = _OP1 << _OP2;
+	case 4:  _RST = _OP1 >>> _OP2;
+	case 5:  _RST = _OP1 >> _OP2;
+	case 6:  _RST = _OP1 | _OP2;
+	case 7:  _RST = _OP1 & _OP2;
+	case 11: _RST = ~(_OP1 | _OP2);
+	case 12: _RST = (_OP1 << 1) + _OP2;
+	case 13: _RST = (_OP1 << 2) + _OP2;
+      };
+    }
+
 
 op ALUm_op(opc: card(4))
   syntax = 
@@ -241,6 +298,19 @@ op ALUm_op(opc: card(4))
 	default: "undef!"
       }
   image = format("%4b", opc)
+  action = 
+    {
+      // TODO this does not take pipelined MULs into account for now.
+      switch (opc)
+      {
+	case 0:
+	  SL = coerce(int(32),_OP1) * coerce(int(32),_OP2);
+	  SH = ( sext64(_OP1, 32) * sext64(_OP2, 64) ) >>> 32;
+	case 1:
+	  SL = _OP1 * _OP2;
+	  SH = ( coerce(card(64),_OP1) * coerce(card(64),_OP2) ) >>> 32;
+      };
+    }
 
 op ALUc_op(opc: card(4))
   syntax = 
@@ -256,6 +326,19 @@ op ALUc_op(opc: card(4))
 	default: "undef!"
       }
   image = format("%4b", opc)
+  action =
+    {
+      switch (opc)
+      {
+	case 0: _RST = _OP1 == _OP2;
+	case 1: _RST = _OP1 != _OP2;
+	case 2: _RST = coerce(int(32),_OP1) <  coerce(int(32),_OP2);
+	case 3: _RST = coerce(int(32),_OP1) <= coerce(int(32),_OP2);
+	case 4: _RST = _OP1 <  _OP2;
+	case 5: _RST = _OP1 <= _OP2;
+	case 6: _RST = (_OP1 & (1 << _OP2)) != 0;
+      };
+    }
 
 op ALUp_op(opc: card(4))
   syntax = 
@@ -267,6 +350,15 @@ op ALUp_op(opc: card(4))
 	default: "undef!"
       }
   image = format("%4b", opc)
+  action =
+    {
+      switch (opc)
+      {
+	case 6:  _RST = _OP1 | _OP2;
+	case 7:  _RST = _OP1 & _OP2;
+	case 10: _RST = _OP1 ^ _OP2;
+      };
+    }
 
 op ALUi_fmt(func: ALU_op, rd: reg_idx, rs1: reg_idx, imm12: card(12))
   syntax = if func.is_sub && rs1.is_zero then
@@ -291,42 +383,88 @@ op ALUi_fmt(func: ALU_op, rd: reg_idx, rs1: reg_idx, imm12: card(12))
 	     endif
 	   endif
   image = format("00 %s %s %s %12b", func, rd, rs1, imm12)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = imm12;
+	     func.action;
+	     setGPR(rd, _RST);
+           }
 
 op ALUl_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, imm32: card(32))
   syntax = format("%s %s = %s, %d", func, rd, rs1, imm32)
   image = format("11111 %s %s XXXXX 000 %s %32b", rd, rs1, func, imm32)
-  action = { }
+  is_long = 1
+  action = {
+             _OP1 = rs1;
+	     _OP2 = imm32;
+	     func.action;
+	     setGPR(rd, _RST);
+           }
 
 op ALUr_fmt(func: ALU_extop, rd: reg_idx, rs1: reg_idx, rs2: reg_idx)
   syntax = format("%s %s = %s, %s", func, rd, rs1, rs2)
   image = format("01000 %s %s %s 000 %s", rd, rs1, rs2, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = rs2;
+	     func.action;
+	     setGPR(rd, _RST);
+           }
 
 op ALUm_fmt(func: ALUm_op, rs1: reg_idx, rs2: reg_idx)
   syntax = format("%s %s, %s", func, rs1, rs2)
   image = format("01000 XXXXX %s %s 010 %s", rs1, rs2, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = rs2;
+	     func.action;
+	   }
 
 op ALUc_fmt(func: ALUc_op, pd: pred_idx, rs1: reg_idx, rs2: reg_idx)
   syntax = format("%s %s = %s, %s", func, pd, rs1, rs2)
   image = format("01000 XX %s %s %s 011 %s", pd, rs1, rs2, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = rs2;
+	     func.action;
+	     setPRR(pd, _RST);
+           }
 
 op ALUci_fmt(func: ALUc_op, pd: pred_idx, rs1: reg_idx, imm5: card(5))
   syntax = format("%s %s = %s, %d", func, pd, rs1, imm5)
   image = format("01000 XX %s %s %5b 110 %s", pd, rs1, imm5, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     // Note: The imm5 value is cast to a card(32), so it is not sign-extended
+	     // by int(32) cast in the comparison. This is intentional.
+	     _OP2 = imm5;
+	     func.action;
+	     setPRR(pd, _RST);
+           }
 
 op ALUp_fmt(func: ALUp_op, pd: pred_idx, ps1: npred_idx, ps2: npred_idx)
   syntax = format("%s %s = %s, %s", func, pd, ps1, ps2)
   image = format("01000 XX %s X %s X %s 100 %s", pd, ps1, ps2, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = ps1;
+	     _OP2 = ps2;
+	     func.action;
+	     setPRR(pd, _RST);
+           }
 
 op ALUb_fmt(rd: reg_idx, rs1: reg_idx, imm5: card(5), ps: npred_idx)
   syntax = format("bcopy  %s = %s, %d, %s", rd, rs1, imm5, ps)
   image = format("01000 %s %s %5b 101 %s", rd, rs1, imm5, ps)
-  action = { }
+  is_long = 0
+  action = {
+	     rd = (rs1 & ~(1 << imm5)) | (ps << imm5);
+           }
 
 
 
@@ -342,17 +480,24 @@ op SPCw_op(opc: card(4))
 op SPCw_fmt(func: SPCw_op)
   syntax = format("%s", func)
   image = format("01001 XXXXXXXXXXXXXXX 001 %s", func)
+  is_long = 0
   action = { }
 
 op SPCt_fmt(rs1: reg_idx, sd: sreg_idx)
   syntax = format("mts    %s = %s", sd, rs1)
   image = format("01001 XXXXX %s XXXXX 010 %s", rs1, sd)
-  action = { }
+  is_long = 0
+  action = { 
+             setSPR(sd, rs1);
+           }
 
 op SPCf_fmt(rd: reg_idx, ss: sreg_idx)
   syntax = format("mfs    %s = %s", rd, ss)
   image = format("01001 %s XXXXX XXXXX 011 %s", rd, ss)
-  action = { }
+  is_long = 0
+  action = {
+             setGPR(rd, ss);
+           }
 
 
 op LDT_op(opc: card(5))
@@ -393,12 +538,49 @@ op LDT_op(opc: card(5))
       }
   image = format("%5b", opc)
   is_decoupled = (opc >= 20)
+  action =
+    {
+      // TODO model accesses through S$ and D$?
+      switch (opc)
+      {
+	case  0: _RST =         M32[ (ST + _OP1 + (_OP2 << 2)) >> 2 ];
+	case  1: _RST =        LM32[      (_OP1 + (_OP2 << 2)) >> 2 ];
+	case  2: _RST =         M32[      (_OP1 + (_OP2 << 2)) >> 2 ];
+	case  3: _RST =         M32[      (_OP1 + (_OP2 << 2)) >> 2 ];
+	case  4: _RST = sext32( M16[ (ST + _OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case  5: _RST = sext32(LM16[      (_OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case  6: _RST = sext32( M16[      (_OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case  7: _RST = sext32( M16[      (_OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case  8: _RST = sext32(  M [  ST + _OP1 +  _OP2  ], 8);
+	case  9: _RST = sext32( LM [       _OP1 +  _OP2  ], 8);
+	case 10: _RST = sext32(  M [       _OP1 +  _OP2  ], 8);
+	case 11: _RST = sext32(  M [       _OP1 +  _OP2  ], 8);
+	case 12: _RST =         M16[ (ST + _OP1 + (_OP2 << 1)) >> 1 ];
+	case 13: _RST =        LM16[      (_OP1 + (_OP2 << 1)) >> 1 ];
+	case 14: _RST =         M16[      (_OP1 + (_OP2 << 1)) >> 1 ];
+	case 15: _RST =         M16[      (_OP1 + (_OP2 << 1)) >> 1 ];
+	case 16: _RST =          M [  ST + _OP1 +  _OP2  ];
+	case 17: _RST =         LM [       _OP1 +  _OP2  ];
+	case 18: _RST =          M [       _OP1 +  _OP2  ];
+	case 19: _RST =          M [       _OP1 +  _OP2  ];
+	case 20:   SM =         M32[      (_OP1 + (_OP2 << 2)) >> 2 ];
+	case 21:   SM =         M32[      (_OP1 + (_OP2 << 2)) >> 2 ];
+	case 22:   SM = sext32( M16[      (_OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case 23:   SM = sext32( M16[      (_OP1 + (_OP2 << 1)) >> 1 ], 16);
+	case 24:   SM = sext32(  M [       _OP1 +  _OP2  ], 8);
+	case 25:   SM = sext32(  M [       _OP1 +  _OP2  ], 8);
+	case 26:   SM =         M16[      (_OP1 + (_OP2 << 1)) >> 1 ];
+	case 27:   SM =         M16[      (_OP1 + (_OP2 << 1)) >> 1 ];
+	case 28:   SM =          M [       _OP1 +  _OP2  ];
+	case 29:   SM =          M [       _OP1 +  _OP2  ];
+      };
+    }
 
 op STT_op(opc: card(5))
   syntax = 
       switch (opc)
       {
-  case  0: "sws   "
+        case  0: "sws   "
 	case  1: "swl   "
 	case  2: "swc   "
 	case  3: "swm   "
@@ -413,6 +595,24 @@ op STT_op(opc: card(5))
 	default: "undef!"
       }
   image = format("%5b", opc)
+  action =
+    {
+      switch (opc)
+      {
+	case  0:  M32[ (ST + _OP1 + (_OP2 << 2)) >> 2 ] = _OP3;
+	case  1: LM32[      (_OP1 + (_OP2 << 2)) >> 2 ] = _OP3;
+	case  2:  M32[      (_OP1 + (_OP2 << 2)) >> 2 ] = _OP3;
+	case  3:  M32[      (_OP1 + (_OP2 << 2)) >> 2 ] = _OP3;
+	case  4:  M16[ (ST + _OP1 + (_OP2 << 1)) >> 1 ] = _OP3;
+	case  5: LM16[      (_OP1 + (_OP2 << 1)) >> 1 ] = _OP3;
+	case  6:  M16[      (_OP1 + (_OP2 << 1)) >> 1 ] = _OP3;
+	case  7:  M16[      (_OP1 + (_OP2 << 1)) >> 1 ] = _OP3;
+	case  8:   M [       _OP1 + _OP2  ] = _OP3;
+	case  9:  LM [       _OP1 + _OP2  ] = _OP3;
+	case 10:   M [       _OP1 + _OP2  ] = _OP3;
+	case 11:   M [       _OP1 + _OP2  ] = _OP3;
+      };
+    }
 
 
 op LDT_fmt(func: LDT_op, rd: reg_idx, ra: reg_idx, imm7: card(7))
@@ -426,7 +626,15 @@ op LDT_fmt(func: LDT_op, rd: reg_idx, ra: reg_idx, imm7: card(7))
 	     endif
 	   endif
   image = format("01010 %s %s %s %7b", rd, ra, func, imm7) 
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = ra;
+	     _OP2 = imm7;
+	     func.action;
+	     if !func.is_decoupled then
+	       setGPR(rd, _RST);
+	     endif;
+           }
 
 op STT_fmt(func: STT_op, ra: reg_idx, rs: reg_idx, imm7: card(7))
   syntax = if ra.is_zero then
@@ -439,7 +647,13 @@ op STT_fmt(func: STT_op, ra: reg_idx, rs: reg_idx, imm7: card(7))
 	     endif
 	   endif
   image = format("01011 %s %s %s %7b", func, ra, rs, imm7) 
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = ra;
+	     _OP2 = imm7;
+	     _OP3 = rs;
+             func.action;
+           }
 
 
 op STC_op(opc: card(2))
@@ -452,16 +666,52 @@ op STC_op(opc: card(2))
 	case 3:  "sspill"
       }
   image = format("%2b", opc)
+  action =
+    {
+      // This is just a dummy implemetation to get the used registers
+      switch (opc)
+      {
+	case 0:
+	  ST = ST - _OP1;
+	  if SS - ST < STACK_CACHE_SIZE then
+	    SS = ST + STACK_CACHE_SIZE;
+	  endif;
+	case 1:
+	  if SS < ST + _OP1 then
+	    SS = ST + _OP1;
+	  endif;
+	case 2:
+	  ST = ST + _OP1;
+	  if SS < ST then
+	    SS = ST;
+	  endif;
+	case 3:
+	  SS = SS - _OP1;
+	  if SS < ST then
+	    // TODO what happens if we spill more than the content of the stack cache?
+	    // Do we limit the spill by ST or do we update ST to the spilled amount?
+	    SS = ST;
+	  endif;
+      };
+    }
 
 op STCi_fmt(func: STC_op, imm18: card(18))
   syntax = format("%s %d", func, imm18)
   image = format("01100 %s 00 %18b", func, imm18)
-  action = { }
+  is_long = 0
+  action = {
+	     _OP1 = (imm18 << 2);
+	     func.action;
+           }
 
 op STCr_fmt(func: STC_op, rs: reg_idx)
   syntax = format("%s %s", func, rs)
   image = format("01100 %s 01 X %s XXXXX XXXXXXX", func, rs)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs;
+	     func.action;
+           }
 
 
 
@@ -483,6 +733,43 @@ op CFL_op(opc: card(2))
   is_call = (opc == 0)
   // Is this a trap instruction
   is_trap = (opc == 3)
+  action =
+    {
+      switch (opc) 
+      {
+	case 0:
+	  // Update link registers
+	  SRB = MCB;
+	  // Calculate the return address .. 
+	  SRO = if _OP3 then 
+		  // Delayed case
+		  // TODO this assumes that nPC has already advanced beyond the delay slot when the call is executed
+		  nPC - MCB
+		else
+		  // Non-delayed calls return immediately after the call
+	          // TODO The return address is _IADDR + 8 if this has the bundle bit set
+		  __IADDR + 4 - MCB
+		endif;
+	  // Start at called function
+	  MCB = _OP1;
+	  nPC = _OP1;
+	case 1:
+	  // branch inside a subfunction
+	  nPC = _OP1;
+	case 2:
+	  // branch to a different subfunction
+	  MCB = _OP1;
+	  nPC = _OP1 + _OP2;
+	case 3:
+	  SXB = MCB;
+	  // Trap is always non-delayed
+	  // TODO The return address is _IADDR + 8 if this has the bundle bit set
+          SXO = __IADDR + 4 - MCB;
+	  // TODO How to read out the interrupt vector?
+	  MCB = LM32[ (ISRVECTOR_BASE + _OP1) >> 2 ];
+	  nPC =  MCB;
+      };
+    }
 
 op CFLret_op(opc: card(2))
   syntax = 
@@ -493,27 +780,61 @@ op CFLret_op(opc: card(2))
 	default: "undef!"
       }
   image = format("%2b", opc)
+  action =
+    {
+      switch (opc) 
+      {
+	case 0:
+	  MCB = SRB;
+	  nPC = SRB + SRO;
+	case 1:
+	  MCB = SXB;
+	  nPC = SXB + SXO;
+      };
+    }
+
 
 op CFLi_fmt(func: CFL_op, d: bit, imm22: card(22))
   // This is a workaround for gliss type/size conversion to signed.
-  syntax = format("%s%s %d", func, if d then "" else "nd" endif, 
-                                   if func.is_PCRel then (coerce(int(32), imm22)<<10)>>10 else imm22 endif)
+  syntax = format("%s%s %d", func, if d then "  " else "nd" endif, 
+                                   if func.is_PCRel then sext32(imm22, 22) else imm22 endif)
   image = format("10 %s %1b %22b", func, d, imm22)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = if func.is_PCRel then __IADDR + sext32(imm22 << 2, 24) else imm22 << 2 endif;
+	     _OP2 = 0;
+	     _OP3 = d;
+	     func.action;
+           }
 
 op CFLri_fmt(func: CFLret_op, d: bit)
-  syntax = format("%s%s", func, if d then "" else "nd" endif)
+  syntax = format("%s%s", func, if d then "  " else "nd" endif)
   image = format("1100 %1b XXXXX XXXXX XXXXX XXX 00 %s", d, func)
-  action = { }
+  is_long = 0
+  action = { 
+             func.action;
+	   }
 
 op CFLrs_fmt(func: CFL_op, d: bit, rs1: reg_idx)
-  syntax = format("%s%s %s", func, if d then "" else "nd" endif, rs1)
+  syntax = format("%s%s %s", func, if d then "  " else "nd" endif, rs1)
   image = format("1100 %1b XXXXX %s XXXXX XXX 01 %s", d, rs1, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = 0;
+	     _OP3 = d;
+	     func.action;
+           }
 
 op CFLrt_fmt(func: CFL_op, d: bit, rs1: reg_idx, rs2: reg_idx)
-  syntax = format("%s%s %s, %s", func, if d then "" else "nd" endif, rs1, rs2)
+  syntax = format("%s%s %s, %s", func, if d then "  " else "nd" endif, rs1, rs2)
   image = format("1100 %1b XXXXX %s %s XXX 10 %s", d, rs1, rs2, func)
-  action = { }
+  is_long = 0
+  action = {
+             _OP1 = rs1;
+	     _OP2 = rs2;
+	     _OP3 = d;
+	     func.action;
+           }
 
 
