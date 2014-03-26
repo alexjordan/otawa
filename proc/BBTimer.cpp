@@ -30,34 +30,43 @@ protected:
 		if(bb->isEnd())
 			return;
 		
-		// compute of each edge
-		for(BasicBlock::InIterator edge(bb); edge; edge++)
-			processEdge(ws, cfg, edge);
+		// computation of each edge
+		genstruct::Vector<Edge *> edges;
+		for(BasicBlock::InIterator edge(bb); edge; edge++) {
+			if(!edge->source()->isEntry() || !cfg->hasProp(CALLED_BY))
+				edges.add(edge);
+			else
+				for(Identifier<Edge *>::Getter edge(cfg, CALLED_BY); edge; edge++)
+					edges.add(edge);
+		}
 		
 		// compute the minimum
+		genstruct::Vector<ot::time> times;
 		ot::time btime = type_info<ot::time>::max;
-		for(BasicBlock::InIterator edge(bb); edge; edge++)
-			btime = min(btime, *ipet::TIME(edge));
-		ipet::TIME(bb) = btime;
+		for(int i = 0; i < edges.count(); i++) {
+			ot::time time = compute(ws, cfg, edges[i], bb);
+			times.add(time);
+			btime = min(btime, time);
+		}
 		
 		// build the delta
-		for(BasicBlock::InIterator edge(bb); edge; edge++)
-			ipet::TIME_DELTA(edge) = ipet::TIME(edge) - btime;
+		ipet::TIME(bb) = btime;
+		if(logFor(Processor::LOG_BLOCK))
+			log << "\t\t\t\ttime(" << bb << ") = " << btime << io::endl;
+		for(int i = 0; i < edges.count(); i++) {
+			ipet::TIME_DELTA(edges[i]) = times[i] - btime;
+			if(logFor(Processor::LOG_BLOCK))
+				log << "\t\t\t\ttime(" << edges[i] << ") = " << *ipet::TIME_DELTA(edges[i]) << io::endl;
+		}
 	}
 
-	virtual void processEdge(WorkSpace *ws, CFG *cfg, Edge *edge)  {
+	virtual ot::time compute(WorkSpace *ws, CFG *cfg, Edge *edge, BasicBlock *bb)  {
 		if(logFor(Processor::LOG_BLOCK))
 			log << "\t\t\t" << edge << io::endl;
 
 		// compute source and target
-		BasicBlock *source = edge->source();
-		if(source->isEntry() && CALLED_BY(source->cfg()).exists())
-				return;
-		BasicBlock *target;
-		if(edge->kind() == Edge::CALL)
-			target = edge->calledCFG()->firstBB();
-		else
-			target = edge->target();
+		BasicBlock 	*source = edge->source(),
+					*target = bb;
 
 		// initialize the sequence
 		int index = 0;
@@ -82,10 +91,7 @@ protected:
 		graph.build();
 		
 		// compute the graph
-		ot::time cost = graph.analyze();
-		if(logFor(Processor::LOG_BLOCK))
-			log << "\t\t\t\ttime(" << edge << ") = " << cost << io::endl;
-		ipet::TIME(edge) = cost;
+		return graph.analyze();
 	}
 };
 

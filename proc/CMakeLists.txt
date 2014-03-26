@@ -21,7 +21,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 # configuration
 set(SCRIPT		"patmos")		# machine model
 set(NAMESPACE	"tcrest")		# namespace (classes must be contained in the namespace otawa::model)
-set(FILES		)				# cache, pipeline, memory
+set(FILES						# cache, pipeline, memory
+				pipeline.xml)
 set(MODULES	)					# used modules (to pass to otawa-config=
 set(SOURCES 	hook.cpp		# sources of the plugin
 				BBTimer.cpp
