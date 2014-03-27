@@ -17,42 +17,38 @@ public:
 		WorkSpace *ws,
 		ParExeProc *proc,
 		ParExeSequence *seq,
-		const PropList &props = PropList::EMPTY): otawa::ParExeGraph(ws, proc, seq, props) { }
+		const PropList &props = PropList::EMPTY): otawa::ParExeGraph(ws, proc, seq, props)
+	{
+		info = otawa::patmos::INFO(ws->process());
+		ASSERT(info);
+	}
 		
 	virtual void addEdgesForFetch(void) {
+
+		// prepare first bundle
 		ParExeStage *fetch_stage = _microprocessor->fetchStage();
+		ParExeStage::NodeIterator node(fetch_stage);
+		ParExeNode *last = node;
+		Address btop = last->inst()->inst()->address() + info->bundleSize(last->inst()->inst()->address());
 
-		// traverse all fetch nodes
-		/*ParExeNode * first_cache_line_node = fetch_stage->firstNode();
-		address_t current_cache_line = fetch_stage->firstNode()->inst()->inst()->address().offset() /  _cache_line_size;
-		for(int i=0 ; i<fetch_stage->numNodes()-1 ; i++) {
-			ParExeNode *node = fetch_stage->node(i);
-			ParExeNode *next = fetch_stage->node(i+1);
-
-			// taken banch ?
-			if (node->inst()->inst()->topAddress() != next->inst()->inst()->address()){
-				// fixed by casse: topAddress() is address() + size()
-				ParExeEdge * edge = new ParExeEdge(node, next, ParExeEdge::SOLID);
-				edge->setLatency(_branch_penalty); // taken branch penalty when no branch prediction is enabled
-				edge = new ParExeEdge(first_cache_line_node, next, ParExeEdge::SOLID);
-				edge->setLatency(_branch_penalty);
-			}
+		// loop over nodes
+		for(node++; node; last = *node, node++) {
+			
+			// inside the bundle
+			if(node->inst()->inst()->address() < btop)
+				new ParExeEdge(last, *node, ParExeEdge::SLASHED);
+			
+			// new bundle
 			else {
-				new ParExeEdge(node, next, ParExeEdge::SLASHED);
+				new ParExeEdge(last, *node, ParExeEdge::SOLID);
+				btop = node->inst()->inst()->address() + info->bundleSize(node->inst()->inst()->address());
 			}
+		}
 
-			// new cache line?
-			//if (cache)         FIXME !!!!!!!!!!!!!!!
-			/*address_t cache_line = next->inst()->inst()->address().offset() /  _cache_line_size;
-			if ( cache_line != current_cache_line){
-				new ParExeEdge(first_cache_line_node, next, ParExeEdge::SOLID);
-				new ParExeEdge(node, next, ParExeEdge::SOLID);
-				first_cache_line_node = next;
-				current_cache_line = cache_line;
-			}
-			//    }	
-		}*/
 	}
+
+private:
+	otawa::patmos::Info *info;
 };
 
 class BBTimer: public GraphBBTime<ExeGraph> {
@@ -127,11 +123,13 @@ protected:
 		graph.build();
 		
 		// compute the graph
-		return graph.analyze();
+		ot::time cost = graph.analyze();
+		outputGraph(&graph, source->number(), target->number(), 0, "");
+		return cost;
 	}
 };
 
-p::declare BBTimer::reg = p::init("tcrest::patmos::BBTimer", Version(1, 0, 0))
+p::declare BBTimer::reg = p::init("tcrest::patmos_wcet::BBTimer", Version(1, 0, 0))
 	.base(GraphBBTime<ParExeGraph>::reg)
 	.maker<BBTimer>();
 

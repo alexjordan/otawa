@@ -32,7 +32,8 @@ GFLAGS=\
 	-m loader:$(LOADER) \
 	-m code:code \
 	-m env:void_env \
-	-a disasm.c
+	-a disasm.c \
+	-a used_regs.c
 
 NMP =\
 	$(ARCH).nmp

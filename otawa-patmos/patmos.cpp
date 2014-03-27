@@ -131,53 +131,6 @@ public:
 const Platform::Identification Platform::ID("patmos-elf-");
 
 
-
-// SimState class
-/*
-class SimState: public otawa::SimState
-{
-public:
-	SimState(Process *process, patmos_state_t *state, patmos_decoder_t *decoder, bool _free = false)
-	: otawa::SimState(process), _patmosState(state), _patmosDecoder(decoder) {
-		ASSERT(process);
-		ASSERT(state);
-	}
-
-	virtual ~SimState(void) {
-		patmos_delete_state(_patmosState);
-	}
-
-	// virtual void setSP(const Address& addr) { LEON_SYSPARM_REG32_SP(_patmosState) = addr.offset(); }
-
-	inline patmos_state_t *patmosState(void) const { return _patmosState; }
-
-	virtual Inst *execute(Inst *oinst) {
-		ASSERTP(oinst, "null instruction pointer");
-
-		Address addr = oinst->address();
-		patmos_inst_t *inst;
-		_patmosState->nPC = addr.address();
-		inst = patmos_decode(_patmosDecoder, _patmosState->nPC);
-		patmos_execute(_patmosState, inst);
-		patmos_free_inst(inst);
-		if (_patmosState->nPC == oinst->topAddress()) {
-			Inst *next = oinst->nextInst();
-			while (next && next->isPseudo())
-				next = next->nextInst();
-			if(next && next->address() == Address(_patmosState->nPC))
-				return next;
-		}
-		Inst *next = process()->findInstAt(_patmosState->nPC);
-		ASSERTP(next, "cannot find instruction at " << Address(_patmosState->nPC) << " from " << oinst->address());
-		return next;
-	}
-
-private:
-	patmos_state_t *_patmosState;
-	patmos_decoder_t *_patmosDecoder;
-};
-*/
-
 /**
  * This class provides support to build a loader plug-in based on the GLISS V2
  * with ELF file loading based on the GEL library. Currently, this only includes
@@ -218,14 +171,14 @@ public:
 	virtual hard::Platform *platform(void);
 	virtual otawa::Inst *start(void);
 	virtual File *loadFile(elm::CString path);
-	virtual void get(Address at, signed char& val);
-	virtual void get(Address at, unsigned char& val);
-	virtual void get(Address at, signed short& val);
-	virtual void get(Address at, unsigned short& val);
-	virtual void get(Address at, signed long& val);
-	virtual void get(Address at, unsigned long& val);
-	virtual void get(Address at, signed long long& val);
-	virtual void get(Address at, unsigned long long& val);
+	virtual void get(Address at, t::int8& val);
+	virtual void get(Address at, t::uint8& val);
+	virtual void get(Address at, t::int16& val);
+	virtual void get(Address at, t::uint16& val);
+	virtual void get(Address at, t::int32& val);
+	virtual void get(Address at, t::uint32& val);
+	virtual void get(Address at, t::int64& val);
+	virtual void get(Address at, t::uint64& val);
 	virtual void get(Address at, Address& val);
 	virtual void get(Address at, string& str);
 	virtual void get(Address at, char *buf, int size);
@@ -277,9 +230,9 @@ public:
 		out << out_buffer;
 	}
 
-	virtual kind_t kind() { return _kind; }
-	virtual address_t address() const { return _addr; }
-	virtual ot::size size() const { return 4; }
+	virtual kind_t kind(void) { return _kind; }
+	virtual address_t address(void) const { return _addr; }
+	virtual ot::size size(void) const { return ; }
 	virtual Process &process() { return proc; }
 
 	virtual const elm::genstruct::Table<hard::Register *>& readRegs() {
@@ -319,6 +272,7 @@ protected:
 
 private:
 	patmos_address_t _addr;
+	int size;
 	bool isRegsDone;
 };
 
@@ -598,14 +552,14 @@ File *Process::loadFile(elm::CString path) {
 			val = patmos_mem_read##s(_patmosMemory, at.offset()); \
 			/*cerr << "val = " << (void *)(int)val << " at " << at << io::endl;*/ \
 	}
-GET(signed char, 8);
-GET(unsigned char, 8);
-GET(signed short, 16);
-GET(unsigned short, 16);
-GET(signed long, 32);
-GET(unsigned long, 32);
-GET(signed long long, 64);
-GET(unsigned long long, 64);
+GET(t::int8, 8);
+GET(t::uint8, 8);
+GET(t::int16, 16);
+GET(t::uint16, 16);
+GET(t::int32, 32);
+GET(t::uint32, 32);
+GET(t::int64, 64);
+GET(t::uint64, 64);
 GET(Address, 32);
 
 
@@ -630,7 +584,7 @@ void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard
 {
 	// Decode instruction
 	patmos_inst_t *inst;
-	inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	inst = patmos_decode(_patmosDecoder, oinst->address().offset());
 	if(inst->ident == PATMOS_UNKNOWN)
 	{
 		patmos_free_inst(inst);
