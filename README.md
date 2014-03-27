@@ -1,4 +1,20 @@
-Files for OTAWA Patmos port.
+Patmos Plugin for OTAWA
+=======================
 
-patmos/          Gliss2 definition of the Patmos ISA
-otawa-patmos/    OTAWA extensions for Patmos
+Contained Files
+---------------
+
+patmos/         Gliss2 definition of the Patmos ISA
+otawa-patmos/   OTAWA extensions for Patmos
+proc/		
+
+
+Installation
+------------
+
+
+Useful Commands
+---------------
+- otawa-core/bin/dumpcfg -Did <elf> > out.dot
+  Dump the CFG
+

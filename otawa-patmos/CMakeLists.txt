@@ -34,7 +34,6 @@ set(SOURCES
 	"${OTAWA_PRED}"
 	"${OTAWA_TARGET}"
 	"${OTAWA_DELAYED}"
-#	"${OTAWA_USED_REGS}"
 #	"${OTAWA_SEM}"
 )
 
@@ -55,11 +54,6 @@ if(NOT MINGW_WIN)
 		ARGS ${TARGET_IRG} -o ${OTAWA_DELAYED} -a otawa_delayed -f -t "${CMAKE_SOURCE_DIR}/delayed.tpl" -d "return 0\\;" -e ${CMAKE_SOURCE_DIR}/delayed.nmp
 		DEPENDS ${TARGET_IRG}
 	)
-#	add_custom_command(
-#		OUTPUT ${OTAWA_USED_REGS} DEPENDS "used_regs.tpl" COMMAND ${GLISS_ATTR}
-#		ARGS ${TARGET_IRG} -o ${OTAWA_USED_REGS} -a otawa_used_regs -f -t "${CMAKE_SOURCE_DIR}/used_regs.tpl" -d "tmp_var[0] = END_REG\\; return 0\\;" -e ${CMAKE_SOURCE_DIR}/used_regs.nmp
-#		DEPENDS ${TARGET_IRG}
-#	)
 #	add_custom_command(
 #		OUTPUT ${OTAWA_SEM} DEPENDS "sem.tpl" "sem.nmp" COMMAND ${GLISS_ATTR}
 #		ARGS ${TARGET_IRG} -o ${OTAWA_SEM} -a otawa_sem -p -t "${CMAKE_SOURCE_DIR}/sem.tpl" -d "';'" -e ${CMAKE_SOURCE_DIR}/sem.nmp
