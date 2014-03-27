@@ -541,12 +541,14 @@ op LDT_op(opc: card(5))
   image = format("%5b", opc)
   is_word = (opc < 4 || opc == 20 || opc == 21)
   is_half = (opc < 20 && (opc & 0x4)) || (opc >= 20 && (opc & 0x2))
+  is_byte = !is_word && !is_half
   is_unsigned = (opc >= 12 && opc < 19) || (opc >= 26 && opc < 30)
   is_stack =  (opc < 20 && (opc & 0x3) == 0)
   is_local =  (opc < 20 && (opc & 0x3) == 1)
   is_cache =  (opc < 20 && (opc & 0x3) == 2) || (opc >= 20 && (opc & 0x1) == 0)
   is_bypass = (opc < 20 && (opc & 0x3) == 3) || (opc >= 20 && (opc & 0x1) == 1)
   is_decoupled = (opc >= 20)
+  mem_type = if is_word then 4 else if is_half then 2 else 1 endif endif
   action =
     {
       // TODO model accesses through S$ and D$?
@@ -611,6 +613,7 @@ op STT_op(opc: card(5))
   is_local =  ((opc & 0x3) == 1)
   is_cache =  ((opc & 0x3) == 2)
   is_bypass = ((opc & 0x3) == 3)
+  mem_type = if is_word then 4 else if is_half then 2 else 1 endif endif
   action =
     {
       switch (opc)

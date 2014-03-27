@@ -59,6 +59,8 @@ let T1 = -1
 let T2 = -2
 let T3 = -3
 macro RD = "_R"(rd.value)
+macro RA = "_R"(ra.value)
+macro RS = "_R"(rs.value)
 macro RS1 = "_R"(rs1.value)
 macro RS2 = "_R"(rs2.value)
 macro PD = "_P"(pd.value)
@@ -282,11 +284,42 @@ extend SPCf_fmt
 
 extend LDT_fmt
 	otawa_sem = {
-	  SCRATCH(RD);
+	  SETI(T1, imm7);
+	  if func.is_word then
+	    SHL(T1, T1, 2);
+	  else
+	    if func.is_half then
+	      SHL(T1, T1, 1);
+	    endif;
+	  endif;
+	  ADD(T1, RA, T1);
+	  if func.is_stack then
+	    ADD(T1, ST, T1);
+	  endif;
+	  // TODO distinguish between local and global memory
+	  LOAD(RD, T1, func.mem_type);
+	  if !func.is_unsigned then
+	    // TODO do sign extension
+
+	  endif;
 	}
 
 extend STT_fmt
 	otawa_sem = {
+	  SETI(T1, imm7);
+	  if func.is_word then
+	    SHL(T1, T1, 2);
+	  else
+	    if func.is_half then
+	      SHL(T1, T1, 1);
+	    endif;
+	  endif;
+	  ADD(T1, RA, T1);
+	  if func.is_stack then
+	    ADD(T1, ST, T1);
+	  endif;
+	  // TODO distinguish between local and global memory
+	  STORE(T1, RS, func.mem_type);
 	}
 
 extend STCi_fmt
