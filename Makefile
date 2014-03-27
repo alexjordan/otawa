@@ -8,15 +8,20 @@ GLISS_PATH=$(PWD)/../gliss2
 
 all:
 	cd patmos && $(MAKE)
-	cd build && $(MAKE)
+	cd build/otawa-patmos && $(MAKE)
+	cd build/proc && $(MAKE)
 
 config:
-	mkdir -p build
-	cd build && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config -DGLISS_PATH=$(GLISS_PATH) ../otawa-patmos
+	mkdir -p build/otawa-patmos
+	cd build/otawa-patmos && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config -DGLISS_PATH=$(GLISS_PATH) ../../otawa-patmos
+	mkdir -p build/proc
+	cd build/proc && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config ../../proc
 
 clean:
 	cd patmos && $(MAKE) clean
-	cd build && $(MAKE) clean
+	cd build/otawa-patmos && $(MAKE) clean
+	cd build/proc && $(MAKE) clean
 
 install:
-	cd build && $(MAKE) install
+	cd build/otawa-patmos && $(MAKE) install
+	cd build/proc && $(MAKE) install
