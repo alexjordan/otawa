@@ -228,8 +228,8 @@ elm::io::Output& operator<<(elm::io::Output& out, Process *proc)
 class Inst: public otawa::Inst {
 public:
 
-	inline Inst(Process& process, kind_t kind, Address addr)
-		: proc(process), _kind(kind), _addr(addr), isRegsDone(false) { }
+	inline Inst(Process& process, kind_t kind, Address addr, ot::size size)
+		: proc(process), _kind(kind), _addr(addr), isRegsDone(false), _size(size) { }
 
 	/**
 	 */
@@ -243,12 +243,12 @@ public:
 
 	virtual kind_t kind(void) { return _kind; }
 	virtual address_t address(void) const { return _addr; }
-	virtual ot::size size(void) const { return ; }
 	virtual Process &process() { return proc; }
 
+	virtual ot::size size(void) const { return _size; }
+
 	virtual const elm::genstruct::Table<hard::Register *>& readRegs() {
-		if ( ! isRegsDone)
-		{
+		if (!isRegsDone) {
 			decodeRegs();
 			isRegsDone = true;
 		}
@@ -256,8 +256,7 @@ public:
 	}
 
 	virtual const elm::genstruct::Table<hard::Register *>& writtenRegs() {
-		if ( ! isRegsDone)
-		{
+		if (!isRegsDone) {
 			decodeRegs();
 			isRegsDone = true;
 		}
@@ -280,7 +279,7 @@ protected:
 
 private:
 	patmos_address_t _addr;
-	int size;
+	ot::size _size;
 	bool isRegsDone;
 };
 
@@ -289,8 +288,8 @@ private:
 class BranchInst: public Inst {
 public:
 
-	inline BranchInst(Process& process, kind_t kind, Address addr)
-	: Inst(process, kind, addr), _target(0), isTargetDone(false) {
+	inline BranchInst(Process& process, kind_t kind, Address addr, ot::size size)
+	: Inst(process, kind, addr, size), _target(0), isTargetDone(false) {
 		patmos_inst_t *inst;
 		inst = patmos_decode(proc.patmosDecoder(), (patmos_address_t)address());
 		otawa::delayed_t delay = patmos_delayed(inst);
@@ -644,10 +643,11 @@ otawa::Inst *Process::decode(Address addr) {
 	bool is_branch = kind & Inst::IS_CONTROL;
 
 	// build the object
+	ot::size size = patmos_get_inst_size(inst) / 8;
 	if (is_branch)
-		result = new BranchInst(*this, kind, addr);
+		result = new BranchInst(*this, kind, addr, size);
 	else
-		result = new Inst(*this, kind, addr);
+		result = new Inst(*this, kind, addr, size);
 
 	// cleanup
 	ASSERT(result);
@@ -843,7 +843,7 @@ namespace otawa { namespace patmos {
 
 void Process::getSem(::otawa::Inst *oinst, ::otawa::sem::Block& block) {
 	patmos_inst_t *inst;
-	inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	inst = patmos_decode(_patmosDecoder, oinst->address().offset());
 	patmos_sem(inst, block);
 	patmos_free_inst(inst);
 }
