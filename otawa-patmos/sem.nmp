@@ -53,6 +53,7 @@ macro SRB = "_S"(7)
 macro SRO = "_S"(8) 
 macro SXB = "_S"(9) 
 macro SXO = "_S"(10)
+macro MCB = "_MCB"
 
 // operands
 let T1 = -1
@@ -188,6 +189,23 @@ macro STC_semop(opc, s) = \
 	  case 2: ADD(ST, ST, s); SCRATCH(SS); \
 	  case 4: SCRATCH(SS); \
 	}
+
+macro CFL_semop(func, a, b) = \
+	if func.is_trap then \
+	  SET(SXB, MCB); \
+	  SCRATCH(SXO); \
+	  TRAP; \
+	else \
+	  if func.is_call then \
+	    SET(SRB, MCB); \
+	    SCRATCH(SRO); \
+	  endif; \
+	  BRANCH(a); \
+	endif; \
+	if !func.is_local then \
+	  SET(MCB, b); \
+	endif;
+
 
 
 extend Pred_fmt
@@ -335,18 +353,28 @@ extend STCr_fmt
 
 extend CFLi_fmt
 	otawa_sem = {
+	  SETI(T1, imm22);
+	  SETI(T2, 2);
+	  SHL(T1, T1, T2);
+	  if func.is_PCRel then
+	    ADDI(T1, T1, __IADDR);
+	  endif;
+	  CFL_semop(func, T1, T1);
 	}
-
 
 extend CFLri_fmt
 	otawa_sem = {
+	  // TODO model ret/xret
 	}
 
 extend CFLrs_fmt
 	otawa_sem = {
+	  CFL_semop(func, RS1, RS1);
 	}
 
 extend CFLrt_fmt
 	otawa_sem = {
+	  ADD(T1, RS1, RS2);
+	  CFL_semop(func, T1, RS1);
 	}
 

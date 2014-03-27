@@ -746,10 +746,10 @@ op CFL_op(opc: card(2))
   image = format("%2b", opc)
   // Does this use a PC relative or an absolute immediate?
   is_PCRel = (opc == 1)
-  // Is this a local branch?
-  is_local = (opc == 1)
   // Is this a call instruction
   is_call = (opc == 0)
+  // Is this a local branch?
+  is_local = (opc == 1)
   // Is this a trap instruction
   is_trap = (opc == 3)
   action =
