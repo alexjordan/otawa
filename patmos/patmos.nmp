@@ -8,6 +8,7 @@ type half       = card(16)
 type byte       = card(8)
 type bit        = card(1)
 
+type s32        = int(32)
 type u32 	= card(32)
 type u16	= card(16)
 type u8         = card(8)

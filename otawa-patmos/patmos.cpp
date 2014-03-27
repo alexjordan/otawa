@@ -791,48 +791,51 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 
 } }	// otawa::patmos
 
-// semantics information
-#define _ADD(d, s1, s2)		block.add(otawa::sem::add(d, s1, s2))
-#define _SUB(d, s1, s2)		block.add(otawa::sem::sub(d, s1, s2))
-#define _AND(d, s1, s2)		block.add(otawa::sem::_and(d, s1, s2))
-#define _OR(d, s1, s2)		block.add(otawa::sem::_or(d, s1, s2))
-#define _XOR(d, s1, s2)		block.add(otawa::sem::xor(d, s1, s2))
-#define _CMP(d, s1, s2)		block.add(otawa::sem::cmp(d, s1, s2))
-#define _SHL(d, s1, s2)		block.add(otawa::sem::shl(d, s1, s2))
-#define _SHR(d, s1, s2)		block.add(otawa::sem::shr(d, s1, s2))
-#define _ASR(d, s1, s2)		block.add(otawa::sem::asr(d, s1, s2))
+// Semantics information - Generics
+#define _NOP()			block.add(otawa::sem::nop())
+#define _BRANCH(d)		block.add(otawa::sem::branch(d))
+#define _TRAP()		        block.add(otawa::sem::trap())
+#define _CONT()		        block.add(otawa::sem::cont())
 #define _IF(d, s1, s2)		block.add(otawa::sem::_if(d, s1, s2))
 #define _LOAD(d, s1, s2)	block.add(otawa::sem::load(d, s1, s2))
 #define _STORE(d, s1, s2)	block.add(otawa::sem::store(d, s1, s2))
-#define _BRANCH(d)		block.add(otawa::sem::branch(d))
-#define _SETI(d, i)			block.add(otawa::sem::seti(d, i))
-#define _SET(d, s)			block.add(otawa::sem::set(d, s))
-#define _SCRATCH(d)			block.add(otawa::sem::scratch(d))
-#define _R(n)				otawa::patmos::Platform::R_bank[n]->platformNumber()
-#define _F(n)				otawa::patmos::Platform::R_bank[n]->platformNumber()
-#define _PSR				otawa::patmos::Platform::PSR_reg.platformNumber()
-#define _FSR				otawa::patmos::Platform::FSR_reg.platformNumber()
-#define _NO_COND	otawa::sem::NO_COND
+#define _SCRATCH(d)		block.add(otawa::sem::scratch(d))
+#define _SET(d, s)		block.add(otawa::sem::set(d, s))
+#define _SETI(d, i)		block.add(otawa::sem::seti(d, i))
+#define _CMP(d, s1, s2)		block.add(otawa::sem::cmp(d, s1, s2))
+#define _CMPU(d, s1, s2)	block.add(otawa::sem::cmpu(d, s1, s2))
+#define _ADD(d, s1, s2)		block.add(otawa::sem::add(d, s1, s2))
+#define _SUB(d, s1, s2)		block.add(otawa::sem::sub(d, s1, s2))
+#define _SHL(d, s1, s2)		block.add(otawa::sem::shl(d, s1, s2))
+#define _SHR(d, s1, s2)		block.add(otawa::sem::shr(d, s1, s2))
+#define _ASR(d, s1, s2)		block.add(otawa::sem::asr(d, s1, s2))
+#define _NOT(d, s1)		block.add(otawa::sem::_not(d, s1))
+#define _AND(d, s1, s2)		block.add(otawa::sem::_and(d, s1, s2))
+#define _OR(d, s1, s2)		block.add(otawa::sem::_or(d, s1, s2))
+#define _MUL(d, s1, s2)		block.add(otawa::sem::mul(d, s1, s2))
+#define _MULU(d, s1, s2)	block.add(otawa::sem::mulu(d, s1, s2))
+#define _XOR(d, s1, s2)		block.add(otawa::sem::xor(d, s1, s2))
+#define _NO_COND		otawa::sem::NO_COND
 #define _EQ			otawa::sem::EQ
 #define _LT			otawa::sem::LT
 #define _LE			otawa::sem::LE
 #define _GE			otawa::sem::GE
 #define _GT			otawa::sem::GT
-#define _ANY_COND	otawa::sem::ANY_COND
+#define _ANY_COND		otawa::sem::ANY_COND
 #define _NE			otawa::sem::NE
-#define _ULT		otawa::sem::ULT
-#define _ULE		otawa::sem::ULE
-#define _UGE		otawa::sem::UGE
-#define _UGT		otawa::sem::UGT
-#define _WR_SAVE()		block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_SAVE))
-#define _WR_RESTORE()	block.add(otawa::sem::inst(otawa::sem::SPEC, otawa::patmos::SPEC_RESTORE))
-// #include "otawa_sem.h"
+#define _ULT			otawa::sem::ULT
+#define _ULE			otawa::sem::ULE
+#define _UGE			otawa::sem::UGE
+#define _UGT			otawa::sem::UGT
+// Semantics information - Patmos bindings
+#define _R(n)			otawa::patmos::regR[n]->platformNumber()
+#define _S(n)			otawa::patmos::regS[n]->platformNumber()
+#define _MCB			otawa::patmos::regMCB.platformNumber()
+//#include "otawa_sem.h"
 
 
 namespace otawa { namespace patmos {
 
-/**
- */
 void Process::getSem(::otawa::Inst *oinst, ::otawa::sem::Block& block) {
 	//patmos_inst_t *inst;
 	//inst = patmos_decode(_patmosDecoder, oinst->address().address());
