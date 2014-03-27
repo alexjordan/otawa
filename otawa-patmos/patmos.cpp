@@ -56,6 +56,8 @@ namespace otawa { namespace patmos {
  */
 static hard::PlainBank regR("D", hard::Register::INT,  32, "$r%d", 32);
 static hard::PlainBank regS("S", hard::Register::INT,  32, "$s%d", 16);
+static hard::PlainBank regP("P", hard::Register::BITS,  1, "$p%d",  8);
+
 static hard::Register  regMCB("MCB", hard::Register::ADDR, 32);
 static hard::Register  regPC ("PC",  hard::Register::ADDR, 32);
 static hard::Register  regNPC("nPC", hard::Register::ADDR, 32);
@@ -64,6 +66,7 @@ static hard::MeltedBank misc("misc", &regMCB, &regPC,&regNPC, 0);
 static const hard::RegBank *banks[] = {
         &regR,
         &regS,
+	&regP,
         &misc
 };
 
@@ -85,7 +88,6 @@ public:
 	}
         for(int i = 0; i < 16; i++) {
             //map[PATMOS_REG_S(i)] = regS[i];
-            map[PATMOS_REG_S(i)] = 0;
         }
         map[PATMOS_REG_MCB] = &regMCB;
         //map[PATMOS_REG_PC]  = &regPC;
@@ -180,8 +182,7 @@ private:
 
 /**
  * This class provides support to build a loader plug-in based on the GLISS V2
- * with ELF file loading based on the GEL library. Currently, this only includes
- * the PPC ISA.
+ * with ELF file loading based on the GEL library.
  *
  * This class allows to load a binary file, extract the instructions and the
  * symbols (labels and function). You have to provide a consistent
@@ -191,7 +192,7 @@ private:
  * have only to write :
  *   - the platform description,
  *   - the recognition of the instruction,
- *	 - the assignment of the memory pointer.
+ *   - the assignment of the memory pointer.
  */
 class Process: public otawa::Process
 {
@@ -208,16 +209,23 @@ public:
 	}
 
 	virtual int instSize(void) const { return 4; }
+	
 	void decodeRegs( Inst *inst, elm::genstruct::AllocatedTable<hard::Register *> *in, elm::genstruct::AllocatedTable<hard::Register *> *out);
+
 	inline patmos_decoder_t *patmosDecoder() { return _patmosDecoder;}
+	
 	inline void *patmosPlatform(void) const { return _patmosPlatform; }
+
 	void setup(void);
+	
 	void getSem(otawa::Inst *inst, sem::Block& block);
 
 	// Process Overloads
-	virtual hard::Platform *platform(void);
-	virtual otawa::Inst *start(void);
+	virtual hard::Platform *platform(void) { return _platform; }
+	virtual otawa::Inst *start(void) { return _start; }
+	
 	virtual File *loadFile(elm::CString path);
+	
 	virtual void get(Address at, signed char& val);
 	virtual void get(Address at, unsigned char& val);
 	virtual void get(Address at, signed short& val);
@@ -229,6 +237,7 @@ public:
 	virtual void get(Address at, Address& val);
 	virtual void get(Address at, string& str);
 	virtual void get(Address at, char *buf, int size);
+	
 	virtual Option<Pair<cstring, int> > getSourceLine(Address addr)
 		throw (UnsupportedFeatureException);
 	virtual void getAddresses(cstring file, int line, Vector<Pair<Address, Address> >& addresses)
@@ -236,8 +245,11 @@ public:
 
 protected:
 	friend class Segment;
+
 	virtual otawa::Inst *decode(Address addr);
+
 	virtual gel_file_t *gelFile(void) { return _gelFile; }
+	
 	virtual patmos_memory_t *patmosMemory(void) { return _patmosMemory; }
 
 private:
@@ -283,28 +295,25 @@ public:
 	virtual Process &process() { return proc; }
 
 	virtual const elm::genstruct::Table<hard::Register *>& readRegs() {
-/*		if ( ! isRegsDone)
-		{
-			decodeRegs();
-			isRegsDone = true;
-		}
-*/
-		return in_regs;
-	}
-
-	virtual const elm::genstruct::Table<hard::Register *>& writtenRegs() {
-/*
 		if ( ! isRegsDone)
 		{
 			decodeRegs();
 			isRegsDone = true;
 		}
-*/
+		return in_regs;
+	}
+
+	virtual const elm::genstruct::Table<hard::Register *>& writtenRegs() {
+		if ( ! isRegsDone)
+		{
+			decodeRegs();
+			isRegsDone = true;
+		}
 		return out_regs;
 	}
 
 	virtual void semInsts (sem::Block &block) {
-//		proc.getSem(this, block);
+		proc.getSem(this, block);
 	}
 
 protected:
@@ -489,14 +498,6 @@ void Process::setup(void) {
 		return;
 	init = true;
 	map = gel_new_line_map(_gelFile);
-}
-
-hard::Platform *Process::platform(void) {
-	return _platform;
-}
-
-otawa::Inst *Process::start(void) {
-	return _start;
 }
 
 File *Process::loadFile(elm::CString path) {
@@ -814,7 +815,7 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 #define _OR(d, s1, s2)		block.add(otawa::sem::_or(d, s1, s2))
 #define _MUL(d, s1, s2)		block.add(otawa::sem::mul(d, s1, s2))
 #define _MULU(d, s1, s2)	block.add(otawa::sem::mulu(d, s1, s2))
-#define _XOR(d, s1, s2)		block.add(otawa::sem::xor(d, s1, s2))
+#define _XOR(d, s1, s2)		block.add(otawa::sem::_xor(d, s1, s2))
 #define _NO_COND		otawa::sem::NO_COND
 #define _EQ			otawa::sem::EQ
 #define _LT			otawa::sem::LT
@@ -830,17 +831,18 @@ otawa::Process *Loader::create(Manager *man, const PropList& props)
 // Semantics information - Patmos bindings
 #define _R(n)			otawa::patmos::regR[n]->platformNumber()
 #define _S(n)			otawa::patmos::regS[n]->platformNumber()
+#define _P(n)			otawa::patmos::regP[n]->platformNumber()
 #define _MCB			otawa::patmos::regMCB.platformNumber()
-//#include "otawa_sem.h"
+#include "otawa_sem.h"
 
 
 namespace otawa { namespace patmos {
 
 void Process::getSem(::otawa::Inst *oinst, ::otawa::sem::Block& block) {
-	//patmos_inst_t *inst;
-	//inst = patmos_decode(_patmosDecoder, oinst->address().address());
-	//patmos_sem(inst, block);
-	//patmos_free_inst(inst);
+	patmos_inst_t *inst;
+	inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	patmos_sem(inst, block);
+	patmos_free_inst(inst);
 }
 
 } }	// namespace otawa::patmos

@@ -1,6 +1,7 @@
 // canonicals
 canon s32 "_R"(u32)
 canon s32 "_S"(u32) 
+canon bit "_P"(u32) 
 canon u32 "_MCB"
 
 canon "_NOP"()
@@ -59,7 +60,9 @@ let T2 = -2
 macro RD = "_R"(rd.value)
 macro RS1 = "_R"(rs1.value)
 macro RS2 = "_R"(rs2.value)
-macro IMM = rs2.value
+macro PD = "_R"(pd.value)
+macro PS1 = "_R"(ps1.value)
+macro PS2 = "_R"(ps2.value)
 
 // operations
 macro NOP = "_NOP"()
@@ -96,36 +99,86 @@ macro XORI(d, s, i) = "_SETI"(T1, i); "_XOR"(d, s, T1)
 
 // temporaries
 var t1[1, u32]
-var r2[1, u32]
+var t2[1, u32]
 
-// translating conditions
-macro get_cond(c) = \
-	switch (c) { \
-		case 0:		"_NO_COND"	\
-		case 1:		"_EQ" \
-		case 2:		"_LE" \
-		case 3:		"_LT" \
-		case 4:		"_ULE" \
-		case 5:		"_ULT" \
-		case 6:		"_ANY_COND" \
-		case 7:		"_ANY_COND" \
-		case 8:		"_NO_COND" \
-		case 9:		"_NE" \
-		case 0xa:	"_GT" \
-		case 0xb:	"_GE" \
-		case 0xc:	"_UGT" \
-		case 0xd:	"_UGE" \
-		case 0xe:	"_ANY_COND" \
-		case 0xf:	"_ANY_COND" \
-		default:	"_ANY_COND" \
+extend reg_idx
+	value = i
+
+extend sreg_idx
+	value = i
+
+extend pred_idx
+	value = i
+
+extend npred_idx, gpred_idx
+	value = i
+	negated = n
+
+extend ALU_op
+	opcode = opc
+
+extend ALU_extop
+	opcode = opc
+
+extend ALUc_op
+	opcode = opc
+
+extend ALUp_op
+	opcode = opc
+
+// Note: This macro uses T1!
+macro GET_PRED(d, p) = \
+        if p.negated then \
+	  XORI(d, "_P"(p.value), 1); \
+	else \
+          SET(d, "_P"(p.value)); \
+	endif
+
+macro SET_PRED(p, s, op) = SETI(p, 0); IF(s, op, 1); SETI(p, 1)
+
+// Note: this macro uses T1 and T2
+macro ALU_semop(opc, d, s1, s2) = \
+	  switch (opc) { \
+	    case 0: ADD(d, s1, s2); \
+	    case 1: SUB(d, s1, s2); \
+	    case 2: XOR(d, s1, s2); \
+	    case 3: SHL(d, s1, s2); \
+	    case 4: SHR(d, s1, s2); \
+	    case 5: ASR(d, s1, s2); \
+	    case 6:  OR(d, s1, s2); \
+	    case 7: AND(d, s1, s2); \
+	    case 11: OR(T1, s1, s2); NOT(d, T1); \
+	    case 12: SHLI(T1, s1, 1); ADD(d, T1, s2); \
+	    case 13: SHLI(T1, s1, 1); ADD(d, T1, s2); \
+	  }
+
+// Note: Uses T1 and T2
+macro ALUc_semop(opc, p, s1, s2) = \
+        switch (opc) { \
+          case 0: CMP(T1, s1, s2); SET_PRED(p, T1, "_EQ"); \
+	  case 1: CMP(T1, s1, s2); SET_PRED(p, T1, "_NE"); \
+	  case 2: CMP(T1, s1, s2); SET_PRED(p, T1, "_LT"); \
+	  case 3: CMP(T1, s1, s2); SET_PRED(p, T1, "_LE"); \
+	  case 4: CMP(T1, s1, s2); SET_PRED(p, T1, "_ULT"); \
+	  case 5: CMP(T1, s1, s2); SET_PRED(p, T1, "_ULE"); \
+	  case 6: SETI(T1, 1); SHL(T1, T1, s2); AND(T1, s1, T1); \
+	          SETI(T2, 0); CMP(T1, T1, T2); SET_PRED(p, T1, "_NE"); \
 	}
 
-
+macro ALUp_semop(opc, p, p1, p2) = \
+        switch (opc) { \
+	  case 6:   OR(T1, p1, p2); SET(p, T1); \
+	  case 7:  AND(T1, p1, p2); SET(p, T1); \
+	  case 10: XOR(T1, p1, p2); SET(p, T1); \
+	}
 
 extend Pred_fmt
 	otawa_sem = {
 	  if !guard.always_true then
-	    // IF(,1)
+	    GET_PRED(T2, guard);
+	    SETI(T1, 1);
+	    CMP(T1, T2, T1);
+	    IF(T1, "_NE", 1);
 	    CONT;
 	  endif;
 	  x.otawa_sem;
@@ -134,33 +187,53 @@ extend Pred_fmt
 extend ALUi_fmt
 	otawa_sem = {
 	  if !rd.is_zero then
-	    SETI(t1, imm12);
-	    ADD(rd, rs1, t1);
+	    SETI(T2, imm12);
+	    ALU_semop(func.opcode, RD, RS1, T2);
 	  endif;
 	}
 
 extend ALUl_fmt
 	otawa_sem = {
+	  if !rd.is_zero then
+	    SETI(T2, imm32);
+	    ALU_semop(func.opcode, RD, RS1, T2);
+	  endif;
 	}
 
 extend ALUr_fmt
 	otawa_sem = {
+	  if !rd.is_zero then
+	    ALU_semop(func.opcode, RD, RS1, RS2);
+	  endif;
 	}
 
 extend ALUm_fmt
 	otawa_sem = {
+	  if func.is_unsigned then
+	    MULU(SL, RS1, RS2);
+	  else
+	    MUL(SL, RS1, RS2);
+	  endif;
+	  // For now, do not calculate the high word..
+	  SCRATCH(SH);
 	}
 
 extend ALUc_fmt
 	otawa_sem = {
+	  ALUc_semop(func.opcode, PD, RS1, RS2);
 	}
 
 extend ALUci_fmt
 	otawa_sem = {
+	  SETI(T2, imm5);
+	  ALUc_semop(func.opcode, PD, RS1, T2);
 	}
 
 extend ALUp_fmt
 	otawa_sem = {
+	  GET_PRED(T1, ps1);
+	  GET_PRED(T2, ps2);
+	  ALUp_semop(func.opcode, PD, T1, T2);
 	}
 
 extend ALUb_fmt
@@ -169,14 +242,17 @@ extend ALUb_fmt
 
 extend SPCw_fmt
 	otawa_sem = {
+	  // Just waits..
 	}
 
 extend SPCt_fmt
 	otawa_sem = {
+	  SET("_S"(sd.value), RS1);
 	}
 
 extend SPCf_fmt
 	otawa_sem = {
+	  SET(RD, "_S"(ss.value));
 	}
 
 extend LDT_fmt
@@ -189,10 +265,14 @@ extend STT_fmt
 
 extend STCi_fmt
 	otawa_sem = {
+	  SCRATCH(SS);
+	  SCRATCH(ST);
 	}
 
 extend STCr_fmt
 	otawa_sem = {
+	  SCRATCH(SS);
+	  SCRATCH(ST);
 	}
 
 extend CFLi_fmt

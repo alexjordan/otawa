@@ -299,6 +299,7 @@ op ALUm_op(opc: card(4))
 	default: "undef!"
       }
   image = format("%4b", opc)
+  is_unsigned = (opc == 1)
   action = 
     {
       // TODO this does not take pipelined MULs into account for now.
