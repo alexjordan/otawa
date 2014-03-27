@@ -57,12 +57,14 @@ macro SXO = "_S"(10)
 // operands
 let T1 = -1
 let T2 = -2
+let T3 = -3
 macro RD = "_R"(rd.value)
 macro RS1 = "_R"(rs1.value)
 macro RS2 = "_R"(rs2.value)
-macro PD = "_R"(pd.value)
-macro PS1 = "_R"(ps1.value)
-macro PS2 = "_R"(ps2.value)
+macro PD = "_P"(pd.value)
+macro PS = "_P"(ps.value)
+macro PS1 = "_P"(ps1.value)
+macro PS2 = "_P"(ps2.value)
 
 // operations
 macro NOP = "_NOP"()
@@ -100,6 +102,7 @@ macro XORI(d, s, i) = "_SETI"(T1, i); "_XOR"(d, s, T1)
 // temporaries
 var t1[1, u32]
 var t2[1, u32]
+var t3[1, u32]
 
 extend reg_idx
 	value = i
@@ -172,6 +175,19 @@ macro ALUp_semop(opc, p, p1, p2) = \
 	  case 10: XOR(T1, p1, p2); SET(p, T1); \
 	}
 
+extend STC_op
+	opcode = opc
+
+// We only track ST pointer for now..
+macro STC_semop(opc, s) = \
+        switch (opc) { \
+	  case 0: SUB(ST, ST, s); SCRATCH(SS); \
+	  case 1: SCRATCH(SS); \
+	  case 2: ADD(ST, ST, s); SCRATCH(SS); \
+	  case 4: SCRATCH(SS); \
+	}
+
+
 extend Pred_fmt
 	otawa_sem = {
 	  if !guard.always_true then
@@ -238,6 +254,15 @@ extend ALUp_fmt
 
 extend ALUb_fmt
 	otawa_sem = {
+	  // rd = (rs1 & (1 << imm5)) | (ps << imm5)
+	  GET_PRED(T3, ps);
+	  SETI(T1, 1);
+	  SETI(T2, imm5);
+	  SHL(T1, T1, T2);
+	  NOT(T1, T1);
+	  AND(T1, T1, RS1);
+	  SHL(T3, T3, T2);
+	  OR(RD, T1, T3);
 	}
 
 extend SPCw_fmt
@@ -257,6 +282,7 @@ extend SPCf_fmt
 
 extend LDT_fmt
 	otawa_sem = {
+	  SCRATCH(RD);
 	}
 
 extend STT_fmt
@@ -265,14 +291,13 @@ extend STT_fmt
 
 extend STCi_fmt
 	otawa_sem = {
-	  SCRATCH(SS);
-	  SCRATCH(ST);
+	  SETI(T2, imm18);
+	  STC_semop(func.opcode, T2);
 	}
 
 extend STCr_fmt
 	otawa_sem = {
-	  SCRATCH(SS);
-	  SCRATCH(ST);
+	  STC_semop(func.opcode, RS1);
 	}
 
 extend CFLi_fmt
