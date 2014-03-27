@@ -5,6 +5,7 @@
 #include <otawa/parexegraph/GraphBBTime.h>
 #include <otawa/parexegraph/ParExeGraph.h>
 #include <otawa/cfg/features.h>
+#include "../otawa-patmos/patmos.h"
 
 namespace tcrest { namespace patmos {
 
@@ -17,6 +18,41 @@ public:
 		ParExeProc *proc,
 		ParExeSequence *seq,
 		const PropList &props = PropList::EMPTY): otawa::ParExeGraph(ws, proc, seq, props) { }
+		
+	virtual void addEdgesForFetch(void) {
+		ParExeStage *fetch_stage = _microprocessor->fetchStage();
+
+		// traverse all fetch nodes
+		/*ParExeNode * first_cache_line_node = fetch_stage->firstNode();
+		address_t current_cache_line = fetch_stage->firstNode()->inst()->inst()->address().offset() /  _cache_line_size;
+		for(int i=0 ; i<fetch_stage->numNodes()-1 ; i++) {
+			ParExeNode *node = fetch_stage->node(i);
+			ParExeNode *next = fetch_stage->node(i+1);
+
+			// taken banch ?
+			if (node->inst()->inst()->topAddress() != next->inst()->inst()->address()){
+				// fixed by casse: topAddress() is address() + size()
+				ParExeEdge * edge = new ParExeEdge(node, next, ParExeEdge::SOLID);
+				edge->setLatency(_branch_penalty); // taken branch penalty when no branch prediction is enabled
+				edge = new ParExeEdge(first_cache_line_node, next, ParExeEdge::SOLID);
+				edge->setLatency(_branch_penalty);
+			}
+			else {
+				new ParExeEdge(node, next, ParExeEdge::SLASHED);
+			}
+
+			// new cache line?
+			//if (cache)         FIXME !!!!!!!!!!!!!!!
+			/*address_t cache_line = next->inst()->inst()->address().offset() /  _cache_line_size;
+			if ( cache_line != current_cache_line){
+				new ParExeEdge(first_cache_line_node, next, ParExeEdge::SOLID);
+				new ParExeEdge(node, next, ParExeEdge::SOLID);
+				first_cache_line_node = next;
+				current_cache_line = cache_line;
+			}
+			//    }	
+		}*/
+	}
 };
 
 class BBTimer: public GraphBBTime<ExeGraph> {

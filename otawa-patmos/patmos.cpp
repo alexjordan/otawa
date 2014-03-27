@@ -411,6 +411,8 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 		envp = default_envp;
 
 	// handle features
+	INFO(this) = new Info(*this);
+	provide(INFO_FEATURE);
 	provide(MEMORY_ACCESS_FEATURE);
 	provide(SOURCE_LINE_FEATURE);
 	provide(CONTROL_DECODING_FEATURE);
@@ -903,9 +905,57 @@ otawa::Process *Loader::load(Manager *man, CString path, const PropList& props)
  */
 otawa::Process *Loader::create(Manager *man, const PropList& props)
 {
-	//cout << "INFO: using patmos loader.\n";	// !!DEBUG!!
 	return new Process(man, new Platform(props), props);
 }
+
+
+/**
+ * @class Info
+ * Provide information specific to the PatMOS architecture.
+ */
+ 
+ 
+/**
+ * Constructor.
+ */
+Info::Info(otawa::Process& _proc): proc(_proc) {
+}
+
+	
+/**
+ * Get the size in bytes of a bundle starting at the given address.
+ * @param addr	Address to look to.
+ * @return		4 for a 32-bits bundle, 8 bits for a 64-bits bundle.
+ */
+int Info::bundleSize(const Address& addr) {
+	t::uint32 w;
+	proc.get(addr, w);
+	if(w & 0x80000000)
+		return 8;
+	else
+		return 4;
+}
+
+
+/**
+ * Provide access to @ref Info data structure.
+ * 
+ * @p Features
+ * @li @ref INFO_FEATURE
+ * 
+ * @p Hooks
+ * @li Process
+ */
+Identifier<Info *> INFO("otawa::patmos::INFO", 0);
+
+
+/**
+ * Feature ensuring that information about PatMOS are available.
+ * 
+ * @p Properties
+ * @li @ref INFO
+ */
+Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 
 } }	// otawa::patmos
 
