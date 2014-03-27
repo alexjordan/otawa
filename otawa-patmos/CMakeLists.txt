@@ -34,7 +34,7 @@ set(SOURCES
 	"${OTAWA_PRED}"
 	"${OTAWA_TARGET}"
 	"${OTAWA_DELAYED}"
-#	"${OTAWA_SEM}"
+	"${OTAWA_SEM}"
 )
 
 # build of GLISS-derived sources
@@ -54,11 +54,11 @@ if(NOT MINGW_WIN)
 		ARGS ${TARGET_IRG} -o ${OTAWA_DELAYED} -a otawa_delayed -f -t "${CMAKE_SOURCE_DIR}/delayed.tpl" -d "return 0\\;" -e ${CMAKE_SOURCE_DIR}/delayed.nmp
 		DEPENDS ${TARGET_IRG}
 	)
-#	add_custom_command(
-#		OUTPUT ${OTAWA_SEM} DEPENDS "sem.tpl" "sem.nmp" COMMAND ${GLISS_ATTR}
-#		ARGS ${TARGET_IRG} -o ${OTAWA_SEM} -a otawa_sem -p -t "${CMAKE_SOURCE_DIR}/sem.tpl" -d "';'" -e ${CMAKE_SOURCE_DIR}/sem.nmp
-#		DEPENDS ${TARGET_IRG}
-#	)
+	add_custom_command(
+		OUTPUT ${OTAWA_SEM} DEPENDS "sem.tpl" "sem.nmp" COMMAND ${GLISS_ATTR}
+		ARGS ${TARGET_IRG} -o ${OTAWA_SEM} -a otawa_sem -p -t "${CMAKE_SOURCE_DIR}/sem.tpl" -d "';'" -e ${CMAKE_SOURCE_DIR}/sem.nmp
+		DEPENDS ${TARGET_IRG}
+	)
 endif()
 
 # build the library

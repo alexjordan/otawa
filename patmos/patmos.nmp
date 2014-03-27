@@ -8,6 +8,7 @@ type half       = card(16)
 type byte       = card(8)
 type bit        = card(1)
 
+type s32        = int(32)
 type u32 	= card(32)
 type u16	= card(16)
 type u8         = card(8)
@@ -298,6 +299,7 @@ op ALUm_op(opc: card(4))
 	default: "undef!"
       }
   image = format("%4b", opc)
+  is_unsigned = (opc == 1)
   action = 
     {
       // TODO this does not take pipelined MULs into account for now.
@@ -537,7 +539,16 @@ op LDT_op(opc: card(5))
 	default: "undef!"
       }
   image = format("%5b", opc)
+  is_word = (opc < 4 || opc == 20 || opc == 21)
+  is_half = (opc < 20 && (opc & 0x4)) || (opc >= 20 && (opc & 0x2))
+  is_byte = !is_word && !is_half
+  is_unsigned = (opc >= 12 && opc < 19) || (opc >= 26 && opc < 30)
+  is_stack =  (opc < 20 && (opc & 0x3) == 0)
+  is_local =  (opc < 20 && (opc & 0x3) == 1)
+  is_cache =  (opc < 20 && (opc & 0x3) == 2) || (opc >= 20 && (opc & 0x1) == 0)
+  is_bypass = (opc < 20 && (opc & 0x3) == 3) || (opc >= 20 && (opc & 0x1) == 1)
   is_decoupled = (opc >= 20)
+  mem_type = if is_word then 4 else if is_half then 2 else 1 endif endif
   action =
     {
       // TODO model accesses through S$ and D$?
@@ -595,6 +606,14 @@ op STT_op(opc: card(5))
 	default: "undef!"
       }
   image = format("%5b", opc)
+  is_word = (opc < 4)
+  is_half = (opc >= 4 && opc < 8)
+  is_byte = (opc >= 8 && opc < 12)
+  is_stack =  ((opc & 0x3) == 0)
+  is_local =  ((opc & 0x3) == 1)
+  is_cache =  ((opc & 0x3) == 2)
+  is_bypass = ((opc & 0x3) == 3)
+  mem_type = if is_word then 4 else if is_half then 2 else 1 endif endif
   action =
     {
       switch (opc)
@@ -704,12 +723,12 @@ op STCi_fmt(func: STC_op, imm18: card(18))
 	     func.action;
            }
 
-op STCr_fmt(func: STC_op, rs: reg_idx)
-  syntax = format("%s %s", func, rs)
-  image = format("01100 %s 01 X %s XXXXX XXXXXXX", func, rs)
+op STCr_fmt(func: STC_op, rs1: reg_idx)
+  syntax = format("%s %s", func, rs1)
+  image = format("01100 %s 01 X %s XXXXX XXXXXXX", func, rs1)
   is_long = 0
   action = {
-             _OP1 = rs;
+             _OP1 = rs1;
 	     func.action;
            }
 
