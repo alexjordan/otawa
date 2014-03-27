@@ -23,6 +23,7 @@ extern "C"
 	#include <patmos/macros.h>
 
 	// generated code
+	#include <patmos/used_regs.h>
 
 	#include "config.h"
 }
@@ -31,9 +32,6 @@ extern "C"
 
 /* instruction kind */
 #include "otawa_kind.h"
-
-/* used registers */
-// #include "otawa_used_regs.h"
 
 /* target computation */
 #include "otawa_target.h"
@@ -53,20 +51,85 @@ using namespace otawa::hard;
 
 namespace otawa { namespace patmos {
 
+/**
+ * Register banks.
+ */
+static hard::PlainBank regR("D", hard::Register::INT,  32, "$r%d", 32);
+static hard::PlainBank regS("S", hard::Register::INT,  32, "$s%d", 16);
+static hard::Register  regMCB("MCB", hard::Register::ADDR, 32);
+static hard::Register  regPC ("PC",  hard::Register::ADDR, 32);
+static hard::Register  regNPC("nPC", hard::Register::ADDR, 32);
+static hard::MeltedBank misc("misc", &regMCB, &regPC,&regNPC, 0);
+
+static const hard::RegBank *banks[] = {
+        &regR,
+        &regS,
+        &misc
+};
+
+static const elm::genstruct::Table<const hard::RegBank *> banks_table(banks, 3);
+
+
+// register decoding
+class RegisterDecoder {
+public:
+    RegisterDecoder(void) {
+
+        // clear the map
+        for(int i = 0; i < PATMOS_REG_COUNT; i++)
+            map[i] = 0;
+
+        // initialize it
+        for(int i = 0; i < 32; i++) {
+            map[PATMOS_REG_R(i)] = regR[i];
+	}
+        for(int i = 0; i < 16; i++) {
+            //map[PATMOS_REG_S(i)] = regS[i];
+            map[PATMOS_REG_S(i)] = 0;
+        }
+        map[PATMOS_REG_MCB] = &regMCB;
+        //map[PATMOS_REG_PC]  = &regPC;
+        //map[PATMOS_REG_NPC] = &regNPC;
+    }
+
+    inline hard::Register *operator[](int i) const { return map[i]; }
+
+private:
+    hard::Register *map[PATMOS_REG_COUNT];
+};
+static RegisterDecoder register_decoder; 
+
+
 // Platform class
 class Platform: public hard::Platform {
 public:
 	static const Identification ID;
-	Platform(const PropList& props = PropList::EMPTY);
-	Platform(const Platform& platform, const PropList& props = PropList::EMPTY);
 
-	// Registers
-	static const hard::PlainBank R_bank;
-	static const hard::PlainBank S_bank;
+	/**
+	 * Build a new gliss platform with the given configuration.
+	 * @param props		Configuration properties.
+	 */
+        Platform(const PropList& props = PropList::EMPTY): hard::Platform(ID, props)
+                { setBanks(banks_table); }
+	/**
+	 * Build a new platform by cloning.
+	 * @param platform	Platform to clone.
+	 * @param props		Configuration properties.
+	 */
+        Platform(const Platform& platform, const PropList& props = PropList::EMPTY)
+                : hard::Platform(platform, props)
+                { setBanks(banks_table); }
 
-	// otawa::Platform overload
-	virtual bool accept(const Identification& id);
+        // otawa::Platform overload
+        virtual bool accept(const Identification& id)
+                { return id.abi() == "elf" && id.architecture() == "patmos"; }
 };
+
+/**
+ * Identification of the default platform.
+ */
+const Platform::Identification Platform::ID("patmos-elf-");
+
 
 
 // SimState class
@@ -294,63 +357,6 @@ private:
 };
 
 
-/**
- * Register banks.
- */
-static const RegBank *banks[] = {
-	&Platform::R_bank,
-	&Platform::S_bank
-};
-
-
-static const elm::genstruct::Table<const RegBank *> banks_table(banks, 3);
-
-
-/**
- * R register bank.
- */
-const PlainBank Platform::R_bank("R", hard::Register::INT,  32, "%%r%d", 32);
-
-
-/**
- * S register bank.
- */
-const PlainBank Platform::S_bank("S", hard::Register::INT, 32, "%%s%d", 16);
-
-
-/**
- * Identification of the default platform.
- */
-const Platform::Identification Platform::ID("patmos-elf-");
-
-
-/**
- * Build a new gliss platform with the given configuration.
- * @param props		Configuration properties.
- */
-Platform::Platform(const PropList& props): hard::Platform(ID, props) {
-	setBanks(banks_table);
-}
-
-
-/**
- * Build a new platform by cloning.
- * @param platform	Platform to clone.
- * @param props		Configuration properties.
- */
-Platform::Platform(const Platform& platform, const PropList& props)
-: hard::Platform(platform, props) {
-	setBanks(banks_table);
-}
-
-
-/**
- */
-bool Platform::accept(const Identification& id) {
-	return id.abi() == "elf" && id.architecture() == "patmos";
-}
-
-
 // Segment class
 class Segment: public otawa::Segment {
 public:
@@ -367,6 +373,8 @@ protected:
 private:
 	Process& proc;
 };
+
+
 
 
  /**
@@ -431,8 +439,6 @@ Process::~Process() {
 
 
 
-/**
- */
 Option<Pair<cstring, int> > Process::getSourceLine(Address addr) throw (UnsupportedFeatureException) {
 	setup();
 	if (!map)
@@ -445,8 +451,6 @@ Option<Pair<cstring, int> > Process::getSourceLine(Address addr) throw (Unsuppor
 }
 
 
-/**
- */
 void Process::getAddresses(cstring file, int line, Vector<Pair<Address, Address> >& addresses) throw (UnsupportedFeatureException) {
 	setup();
 	addresses.clear();
@@ -487,23 +491,14 @@ void Process::setup(void) {
 	map = gel_new_line_map(_gelFile);
 }
 
-
-/**
- */
 hard::Platform *Process::platform(void) {
 	return _platform;
 }
 
-
-/**
- */
 otawa::Inst *Process::start(void) {
 	return _start;
 }
 
-
-/**
- */
 File *Process::loadFile(elm::CString path) {
 	LTRACE;
 
@@ -612,8 +607,6 @@ GET(unsigned long long, 64);
 GET(Address, 32);
 
 
-/**
- */
 void Process::get(Address at, string& str) {
 	Address base = at;
 	while(!patmos_mem_read8(_patmosMemory, at.offset()))
@@ -625,14 +618,55 @@ void Process::get(Address at, string& str) {
 }
 
 
-/**
- */
 void Process::get(Address at, char *buf, int size)
 	{ patmos_mem_read(_patmosMemory, at.offset(), buf, size); }
 
 
-/**
- */
+
+void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard::Register *> *in,
+	elm::genstruct::AllocatedTable<hard::Register *> *out)
+{
+	// Decode instruction
+	patmos_inst_t *inst;
+	inst = patmos_decode(_patmosDecoder, oinst->address().address());
+	if(inst->ident == PATMOS_UNKNOWN)
+	{
+		patmos_free_inst(inst);
+		return;
+	}
+
+	// get register infos
+	patmos_used_regs_read_t rds;
+	patmos_used_regs_write_t wrs;
+	elm::genstruct::Vector<hard::Register *> reg_in;
+	elm::genstruct::Vector<hard::Register *> reg_out;
+        patmos_used_regs(inst, rds, wrs);
+        for (int i = 0; rds[i] != -1; i++ ) {
+            hard::Register *r = register_decoder[rds[i]];
+            if(r)
+                reg_in.add(r);
+        }
+        for (int i = 0; wrs[i] != -1; i++ ) {
+            hard::Register *r = register_decoder[wrs[i]];
+            if(r)
+                reg_out.add(r);
+        } 
+
+	// store results
+	int cpt_in = reg_in.length();
+	in->allocate(cpt_in);
+	for (int i = 0 ; i < cpt_in ; i++)
+		in->set(i, reg_in.get(i));
+	int cpt_out = reg_out.length();
+	out->allocate(cpt_out);
+	for (int i = 0 ; i < cpt_out ; i++)
+		out->set(i, reg_out.get(i));
+
+	// Free instruction
+	patmos_free_inst(inst);
+}
+
+
 otawa::Inst *Process::decode(Address addr) {
 	//cerr << "DECODING: " << addr << io::endl;
 
@@ -651,20 +685,6 @@ otawa::Inst *Process::decode(Address addr) {
 	else
 		kind = patmos_kind(inst);
 
-	// detect the false branch instructions
-	/*switch (inst->ident)
-	{
-		case PPC_BL_D:
-			if (PPC_BL_D_x_x_BRANCH_ADDR_n == 1)
-				kind = Inst::IS_ALU | Inst::IS_INT;
-			break;
-		case PPC_BCL_D_D_D:
-			if (PPC_BCL_D_D_D_x_x_x_BD_n == 1) {
-				kind = Inst::IS_ALU | Inst::IS_INT;
-				cerr << "INFO: no control at " << io::endl;
-			}
-			break;
-	}*/
 	bool is_branch = kind & Inst::IS_CONTROL;
 
 	// build the object
@@ -680,8 +700,7 @@ otawa::Inst *Process::decode(Address addr) {
 }
 
 
-/**
- */
+
 patmos_address_t BranchInst::decodeTargetAddress(void) {
 
 	// Decode the instruction
@@ -701,143 +720,6 @@ patmos_address_t BranchInst::decodeTargetAddress(void) {
 }
 
 
-// Platform definition
-static hard::Platform::Identification PFID("patmos-*-*");
-
-
-
-// read and written registers infos
-
-// values taken from nmp files
-
-// access types
-#define READ_REG     1
-#define WRITE_REG    2
-#define REG_RANGE    0x10
-#define READ_RANGE   READ_REG | REG_RANGE
-#define WRITE_RANGE  WRITE_REG | REG_RANGE
-#define END_REG      0
-
-// reg banks macros
-#define BANK_R		1
-#define BANK_F		2
-#define BANK_PC		3
-#define BANK_nPC	4
-#define BANK_Y		5
-#define BANK_WIM	6
-#define BANK_PSR	7
-#define BANK_FSR	8
-#define BANK_ASR	9
-#define BANK_TBR	10
-
-
-// convert a gliss reg info into one or several otawa Registers,
-// in and out are supposed initialized by the caller
-/*
-static void translate_gliss_reg_info(otawa_patmos_reg_t reg_info, elm::genstruct::Vector<hard::Register *> &in, elm::genstruct::Vector<hard::Register *> &out)
-{
-	if (reg_info == END_REG)
-		return;
-
-	uint8_t access_type	= ((reg_info & 0xFF000000) >> 24);
-	uint8_t gliss_bank 	= ((reg_info & 0x00FF0000) >> 16);
-	bool is_range 		= access_type & REG_RANGE;
-	// READ_REG and WRITE_REG can be both specified at the same time
-	bool is_read 		= access_type & READ_REG;
-	bool is_write 		= access_type & WRITE_REG;
-	uint16_t reg_num_lo 	= (is_range) ? ((reg_info & 0x0000FF00) >> 8) : (reg_info & 0x0000FFFF);
-	uint16_t reg_num_up 	= (is_range) ? (reg_info & 0x000000FF) : reg_num_lo;
-	int reg_count 		= reg_num_up - reg_num_lo + 1;
-	assert(reg_count > 0);
-
-	const hard::RegBank *reg_bank = 0;
-	hard::Register *reg_no_bank = 0;
-	switch (gliss_bank)
-	{
-		case 255:
-			return;
-		case BANK_R:
-			reg_bank = &Platform::R_bank;
-			break;
-		case BANK_F:
-			reg_bank = &Platform::F_bank;
-			break;
-		case BANK_PSR:
-			reg_no_bank = &Platform::PSR_reg;
-			break;
-		case BANK_FSR:
-			reg_no_bank = &Platform::FSR_reg;
-			break;
-		case BANK_PC:
-		case BANK_nPC:
-		case BANK_Y:
-		case BANK_WIM:
-		case BANK_ASR:
-		case BANK_TBR:
-			return;
-		default:
-			ASSERTP(false, "unknown bank " << gliss_bank << ", code=" << io::hex(reg_info));
-	}
-
-	//otawa_reg.allocate(reg_count);
-	for (int i = reg_num_lo ; i <= reg_num_up ; i++)
-	{
-		if (reg_bank)
-		{
-			if (is_read)
-				in.add(reg_bank->get(i));
-			if (is_write)
-				out.add(reg_bank->get(i));
-		}
-		else
-		{
-			if (is_read)
-				in.add(reg_no_bank);
-			if (is_write)
-				out.add(reg_no_bank);
-		}
-	}
-}
-*/
-
-/**
- */
-void Process::decodeRegs(otawa::Inst *oinst, elm::genstruct::AllocatedTable<hard::Register *> *in,
-	elm::genstruct::AllocatedTable<hard::Register *> *out)
-{
-/*
-	// Decode instruction
-	patmos_inst_t *inst;
-	inst = patmos_decode(_patmosDecoder, oinst->address().address());
-	if(inst->ident == PATMOS_UNKNOWN)
-	{
-		patmos_free_inst(inst);
-		return;
-	}
-
-	// get register infos
-	elm::genstruct::Vector<hard::Register *> reg_in;
-	elm::genstruct::Vector<hard::Register *> reg_out;
-	otawa_patmos_reg_t *addr_reg_info = patmos_used_regs(inst);
-	if(addr_reg_info)
-		for (int i = 0; addr_reg_info[i] != END_REG; i++ )
-			translate_gliss_reg_info(addr_reg_info[i], reg_in, reg_out);
-
-	// store results
-	int cpt_in = reg_in.length();
-	in->allocate(cpt_in);
-	for (int i = 0 ; i < cpt_in ; i++)
-		in->set(i, reg_in.get(i));
-	int cpt_out = reg_out.length();
-	out->allocate(cpt_out);
-	for (int i = 0 ; i < cpt_out ; i++)
-		out->set(i, reg_out.get(i));
-
-	// Free instruction
-	patmos_free_inst(inst);
-*/
-}
-
 // otawa::loader::patmos::Loader class
 class Loader: public otawa::Loader {
 public:
@@ -852,7 +734,7 @@ public:
 
 // Alias table
 static string table[] = {
-	"elf_20"
+	"elf_48875"
 };
 static elm::genstruct::Table<string> patmos_aliases(table, 1);
 
