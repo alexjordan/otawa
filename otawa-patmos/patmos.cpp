@@ -800,7 +800,7 @@ Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 #define _BRANCH(d)		block.add(otawa::sem::branch(d))
 #define _TRAP()		        block.add(otawa::sem::trap())
 #define _CONT()		        block.add(otawa::sem::cont())
-#define _IF(d, s1, s2)		block.add(otawa::sem::_if(d, s1, s2))
+#define _IF(cond, s1, jmp)	block.add(otawa::sem::_if(cond, s1, jmp))
 #define _LOAD(d, s1, s2)	block.add(otawa::sem::load(d, s1, s2))
 #define _STORE(d, s1, s2)	block.add(otawa::sem::store(d, s1, s2))
 #define _SCRATCH(d)		block.add(otawa::sem::scratch(d))
