@@ -16,11 +16,12 @@ Find out more about Patmos / T-CREST at
 Contained Files
 ---------------
 
+```
 patmos/         Gliss2 definition of the Patmos ISA
 otawa-patmos/   OTAWA ISA description for Patmos
 proc/		WCET analysis plugin
 test/		Binary test files
-
+```
 
 Installation
 ------------
@@ -29,9 +30,12 @@ Installation
 
 
 # Create a Makefile.cfg, edit to your paths
+
+```
 make config
 make
 make install
+```
 
 
 Useful Commands/Quick guide
@@ -45,4 +49,12 @@ Useful Commands/Quick guide
 
 - otawa-core/bin/owcet -s patmos.osx <elf>
   Run the WCET analysis
+
+Acknowledgements
+----------------
+
+This work was partially funded under the European Union's 7th Framework
+Programme under grant agreement no. 288008: Time-predictable Multi-Core
+Architecture for Embedded Systems (T-CREST) and under the COST Short Term 
+Scientific Mission no. COST-STSM-IC1202-17297.
 
