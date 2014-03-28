@@ -19,9 +19,23 @@ public:
 		ParExeSequence *seq,
 		const PropList &props = PropList::EMPTY): otawa::ParExeGraph(ws, proc, seq, props)
 	{
+		// initialization
 		info = otawa::patmos::INFO(ws->process());
 		ASSERT(info);
 		reg_count = ws->process()->platform()->regCount();
+
+		// lookout for stage
+		for(ParExePipeline::StageIterator stage(proc->pipeline()); stage; stage++) {
+			if(stage->name() == "MEM")
+				mem_stage = stage;
+			else if(stage->name() == "EXE")
+				for(int i = 0; i < stage->numFus(); i++)
+					for(ParExePipeline::StageIterator fu(stage->fu(i)); fu; fu++)
+						if(fu->name() == "ALU")
+							exe_stage = fu;
+		}
+		ASSERT(exe_stage);
+		ASSERT(mem_stage);
 	}
 
 	virtual void addEdgesForFetch(void) {
@@ -50,12 +64,48 @@ public:
 	}
 
 	virtual void findDataDependencies(void) {
-	}
 
-	virtual void addEdgesForMemoryOrder(void) {
-		
 		// prepare registers bank
-		//ParExeNode *regs[reg_count];
+		ParExeNode *regs[reg_count];
+		//elm::array::set(regs, reg_count, static_cast<ParExeNode *>(0));
+		for(int i = 0; i < reg_count; i++)
+			regs[i] = 0;
+
+		// look in the instructions
+		for (InstIterator inst(this->getSequence()) ; inst ; inst++)  {
+
+			// process read registers
+			const elm::genstruct::Table<hard::Register *>& reads = inst->inst()->readRegs();
+			ParExeNode *exe_node = 0;
+			for(int i = 0; i < reads.count(); i++)
+				if(regs[reads[i]->platformNumber()]) {
+					if(!exe_node) {
+						for(ParExeInst::NodeIterator node(inst); node; node++)
+							if(node->stage() == exe_stage) {
+								exe_node = node;
+								break;
+							}
+						ASSERT(exe_node);
+					}
+					ASSERT(0 <= reads[i]->platformNumber() && reads[i]->platformNumber() < reg_count);
+					new ParExeEdge(regs[reads[i]->platformNumber()], exe_node, ParExeEdge::SOLID);
+				}
+
+			// process written registers if load only
+			const elm::genstruct::Table<hard::Register *>& writs = inst->inst()->writtenRegs();
+			ParExeNode *mem_node = 0;
+			for(int i = 0; i < writs.count(); i++) {
+				if(inst->inst()->isLoad() && !mem_node) {
+					for(ParExeInst::NodeIterator node(inst); node; node++)
+						if(node->stage() == mem_stage) {
+								mem_node = node;
+								break;
+							}
+					ASSERT(mem_node);
+				}
+				regs[writs[i]->platformNumber()] = mem_node;
+			}
+		}
 	}
 
 private:
@@ -84,6 +134,7 @@ private:
 
 	otawa::patmos::Info *info;
 	int reg_count;
+	ParExeStage *exe_stage, *mem_stage;
 };
 
 class BBTimer: public GraphBBTime<ExeGraph> {

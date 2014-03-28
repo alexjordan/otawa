@@ -70,7 +70,7 @@ static const hard::RegBank *banks[] = {
         &misc
 };
 
-static const elm::genstruct::Table<const hard::RegBank *> banks_table(banks, 3);
+static const elm::genstruct::Table<const hard::RegBank *> banks_table(banks, 4);
 
 
 // register decoding
