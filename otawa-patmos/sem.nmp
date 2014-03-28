@@ -42,13 +42,23 @@ canon u32 "_ULE"
 canon u32 "_UGE"
 canon u32 "_UGT"
 
+// memory types
+canon u32 "_INT8"
+canon u32 "_INT16"
+canon u32 "_INT32"
+canon u32 "_UINT8"
+canon u32 "_UINT16"
+canon u32 "_UINT32"
+
 // special registers
 macro SZ = "_S"(0) 
 macro SM = "_S"(1) 
 macro SL = "_S"(2) 
 macro SH = "_S"(3) 
 macro SS = "_S"(5) 
-macro ST = "_S"(6) 
+macro ST = "_S"(6)
+// We model the offset registers as absolute addresses here,
+// not as offset to the base.
 macro SRB = "_S"(7) 
 macro SRO = "_S"(8) 
 macro SXB = "_S"(9) 
@@ -107,6 +117,13 @@ var t1[1, u32]
 var t2[1, u32]
 var t3[1, u32]
 
+// Workaround for D-SPM address space aliasing: We map the D-SPM into
+// a separate address range in global memory for the data-flow analysis.
+// D-SPM can only accessed via lwl and swl, so there will be no issues with
+// other memory operations, but it may has to be taken into account if value-facts 
+// are provided/used.
+let SPM_BASE_ADDR = 0x80000000
+
 extend reg_idx
 	value = i
 
@@ -142,6 +159,24 @@ macro GET_PRED(d, p) = \
 
 macro SET_PRED(p, s, op) = SETI(p, 0); IF(s, op, 1); SETI(p, 1)
 
+
+// ---- All Predicated Instructions ----
+
+extend Pred_fmt
+	otawa_sem = {
+	  if !guard.always_true then
+	    GET_PRED(T2, guard);
+	    SETI(T1, 1);
+	    CMP(T1, T2, T1);
+	    IF(T1, "_NE", 1);
+	    CONT;
+	  endif;
+	  x.otawa_sem;
+	}
+
+
+// ---- ALU operations ----
+
 // Note: this macro uses T1 and T2
 macro ALU_semop(opc, d, s1, s2) = \
 	  switch (opc) { \
@@ -176,48 +211,6 @@ macro ALUp_semop(opc, p, p1, p2) = \
 	  case 6:   OR(T1, p1, p2); SET(p, T1); \
 	  case 7:  AND(T1, p1, p2); SET(p, T1); \
 	  case 10: XOR(T1, p1, p2); SET(p, T1); \
-	}
-
-extend STC_op
-	opcode = opc
-
-// We only track ST pointer for now..
-macro STC_semop(opc, s) = \
-        switch (opc) { \
-	  case 0: SUB(ST, ST, s); SCRATCH(SS); \
-	  case 1: SCRATCH(SS); \
-	  case 2: ADD(ST, ST, s); SCRATCH(SS); \
-	  case 4: SCRATCH(SS); \
-	}
-
-macro CFL_semop(func, a, b) = \
-	if func.is_trap then \
-	  SET(SXB, MCB); \
-	  SCRATCH(SXO); \
-	  TRAP; \
-	else \
-	  if func.is_call then \
-	    SET(SRB, MCB); \
-	    SCRATCH(SRO); \
-	  endif; \
-	  BRANCH(a); \
-	endif; \
-	if !func.is_local then \
-	  SET(MCB, b); \
-	endif;
-
-
-
-extend Pred_fmt
-	otawa_sem = {
-	  if !guard.always_true then
-	    GET_PRED(T2, guard);
-	    SETI(T1, 1);
-	    CMP(T1, T2, T1);
-	    IF(T1, "_NE", 1);
-	    CONT;
-	  endif;
-	  x.otawa_sem;
 	}
 
 extend ALUi_fmt
@@ -285,6 +278,9 @@ extend ALUb_fmt
 	  OR(RD, T1, T3);
 	}
 
+
+// ---- Special Instructions -----
+
 extend SPCw_fmt
 	otawa_sem = {
 	  // Just waits..
@@ -300,44 +296,65 @@ extend SPCf_fmt
 	  SET(RD, "_S"(ss.value));
 	}
 
+
+// ---- Load and Store ----
+
+// This macro uses T1
+macro MEM_ADDR(d, ra, imm) = \
+	SETI(d, imm); \
+	if func.is_word then \
+	  SHL(d, d, 2); \
+	else \
+	  if func.is_half then \
+	    SHL(d, d, 1); \
+	  endif; \
+	endif; \
+	ADD(d, d, ra); \
+	if func.is_stack then \
+	  ADD(d, d, ST); \
+	endif; \
+	if func.is_local then \
+	  // We could also use SETP here to map local accesses to \
+	  // a different page. \
+	  ADDI(d, d, SPM_BASE_ADDR); \
+	endif
+
+macro get_mem_type(func) = \
+	if func.is_word then \
+	  "_UINT32" \
+	else \
+	  if func.is_half then \
+	    if func.is_unsigned then "_UINT16" else "_INT16" endif \
+          else \
+	    if func.is_unsigned then "_UINT8" else "_INT8" endif \
+	  endif \
+	endif
+
 extend LDT_fmt
 	otawa_sem = {
-	  SETI(T1, imm7);
-	  if func.is_word then
-	    SHL(T1, T1, 2);
-	  else
-	    if func.is_half then
-	      SHL(T1, T1, 1);
-	    endif;
-	  endif;
-	  ADD(T1, RA, T1);
-	  if func.is_stack then
-	    ADD(T1, ST, T1);
-	  endif;
-	  // TODO distinguish between local and global memory
-	  LOAD(RD, T1, func.mem_type);
-	  if !func.is_unsigned then
-	    // TODO do sign extension
-
-	  endif;
+	  MEM_ADDR(T2, RA, imm7);
+	  LOAD(RD, T2, get_mem_type(func));
 	}
 
 extend STT_fmt
 	otawa_sem = {
-	  SETI(T1, imm7);
-	  if func.is_word then
-	    SHL(T1, T1, 2);
-	  else
-	    if func.is_half then
-	      SHL(T1, T1, 1);
-	    endif;
-	  endif;
-	  ADD(T1, RA, T1);
-	  if func.is_stack then
-	    ADD(T1, ST, T1);
-	  endif;
-	  // TODO distinguish between local and global memory
-	  STORE(T1, RS, func.mem_type);
+	  MEM_ADDR(T2, RA, imm7);
+	  STORE(T2, RS, get_mem_type(func));
+	}
+
+
+// ---- Stack Control ----
+
+extend STC_op
+	opcode = opc
+
+// We only track ST pointer for now..
+macro STC_semop(opc, s) = \
+        switch (opc) { \
+	  case 0: SUB(ST, ST, s); SCRATCH(SS); \
+	  case 1: SCRATCH(SS); \
+	  case 2: ADD(ST, ST, s); SCRATCH(SS); \
+	  case 4: SCRATCH(SS); \
 	}
 
 extend STCi_fmt
@@ -350,6 +367,26 @@ extend STCr_fmt
 	otawa_sem = {
 	  STC_semop(func.opcode, RS1);
 	}
+
+
+// ---- Control Flow ----
+
+macro CFL_semop(func, a, b) = \
+	if func.is_trap then \
+	  SET(SXB, MCB); \
+	  SCRATCH(SXO); \
+	  TRAP; \
+	else \
+	  if func.is_call then \
+	    SET(SRB, MCB); \
+	    // We do not calculate the return address for now \
+	    SCRATCH(SRO); \
+	  endif; \
+	  BRANCH(a); \
+	endif; \
+	if !func.is_local then \
+	  SET(MCB, b); \
+	endif
 
 extend CFLi_fmt
 	otawa_sem = {
@@ -364,7 +401,13 @@ extend CFLi_fmt
 
 extend CFLri_fmt
 	otawa_sem = {
-	  // TODO model ret/xret
+	  if func.is_xret then
+	    SET(MCB, SXB);
+	    BRANCH(SXO);
+	  else
+	    SET(MCB, SRB);
+	    BRANCH(SRO);
+	  endif;
 	}
 
 extend CFLrs_fmt

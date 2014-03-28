@@ -609,6 +609,7 @@ op STT_op(opc: card(5))
   is_word = (opc < 4)
   is_half = (opc >= 4 && opc < 8)
   is_byte = (opc >= 8 && opc < 12)
+  is_unsigned = 0
   is_stack =  ((opc & 0x3) == 0)
   is_local =  ((opc & 0x3) == 1)
   is_cache =  ((opc & 0x3) == 2)
@@ -799,6 +800,7 @@ op CFLret_op(opc: card(2))
 	default: "undef!"
       }
   image = format("%2b", opc)
+  is_xret = (opc == 1)
   action =
     {
       switch (opc) 

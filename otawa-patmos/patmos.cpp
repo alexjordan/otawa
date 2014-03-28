@@ -795,7 +795,7 @@ Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 
 } }	// otawa::patmos
 
-// Semantics information - Generics
+// Semantics information - Generic functions and constants
 #define _NOP()			block.add(otawa::sem::nop())
 #define _BRANCH(d)		block.add(otawa::sem::branch(d))
 #define _TRAP()		        block.add(otawa::sem::trap())
@@ -831,6 +831,14 @@ Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 #define _ULE			otawa::sem::ULE
 #define _UGE			otawa::sem::UGE
 #define _UGT			otawa::sem::UGT
+#define _INT8			otawa::sem::INT8
+#define _INT16			otawa::sem::INT16
+#define _INT32			otawa::sem::INT32
+#define _INT64			otawa::sem::INT64
+#define _UINT8			otawa::sem::UINT8
+#define _UINT16			otawa::sem::UINT16
+#define _UINT32			otawa::sem::UINT32
+#define _UINT64			otawa::sem::UINT64
 // Semantics information - Patmos bindings
 #define _R(n)			otawa::patmos::regR[n]->platformNumber()
 #define _S(n)			otawa::patmos::regS[n]->platformNumber()
