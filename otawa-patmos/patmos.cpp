@@ -161,7 +161,7 @@ public:
 		return 0;
 	}
 
-	virtual int instSize(void) const { return 4; }
+	virtual int instSize(void) const { return 0; }
 	
 	void decodeRegs( Inst *inst, elm::genstruct::AllocatedTable<hard::Register *> *in, elm::genstruct::AllocatedTable<hard::Register *> *out);
 

@@ -21,6 +21,7 @@
 			<name>EX</name>
 			<width>2</width>
 			<type>EXEC</type>
+			<ordered>true</ordered>
 			<fus>
 				<fu id="ALU">
 					<name>ALU</name>

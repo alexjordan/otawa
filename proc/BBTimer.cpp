@@ -21,13 +21,49 @@ public:
 	{
 		info = otawa::patmos::INFO(ws->process());
 		ASSERT(info);
+		reg_count = ws->process()->platform()->regCount();
 	}
-		
+
 	virtual void addEdgesForFetch(void) {
+		addBundledProgramOrder(_microprocessor->fetchStage());
+	}
+
+	virtual void addEdgesForProgramOrder(genstruct::SLList<ParExeStage *> *list_of_stages) {
+		
+		// prepare the stages
+		elm::genstruct::SLList<ParExeStage *> *list;
+		if(list_of_stages)
+			list = list_of_stages;
+		else {
+			list = new  elm::genstruct::SLList<ParExeStage *>;
+			for(ParExePipeline::StageIterator stage(_microprocessor->pipeline()) ; stage ; stage++)
+				if(stage->orderPolicy() == ParExeStage::IN_ORDER) {
+					if(stage->category() != ParExeStage::FETCH
+					&& stage->category() != ParExeStage::EXECUTE)
+						list->add(stage);
+				}
+		}
+		
+		// build the edges
+		for(genstruct::SLList<ParExeStage *>::Iterator stage(*list); stage; stage++)
+			addBundledProgramOrder(stage);
+	}
+
+	virtual void findDataDependencies(void) {
+	}
+
+	virtual void addEdgesForMemoryOrder(void) {
+		
+		// prepare registers bank
+		//ParExeNode *regs[reg_count];
+	}
+
+private:
+
+	void addBundledProgramOrder(ParExeStage *stage) {
 
 		// prepare first bundle
-		ParExeStage *fetch_stage = _microprocessor->fetchStage();
-		ParExeStage::NodeIterator node(fetch_stage);
+		ParExeStage::NodeIterator node(stage);
 		ParExeNode *last = node;
 		Address btop = last->inst()->inst()->address() + info->bundleSize(last->inst()->inst()->address());
 
@@ -44,11 +80,10 @@ public:
 				btop = node->inst()->inst()->address() + info->bundleSize(node->inst()->inst()->address());
 			}
 		}
-
 	}
 
-private:
 	otawa::patmos::Info *info;
+	int reg_count;
 };
 
 class BBTimer: public GraphBBTime<ExeGraph> {

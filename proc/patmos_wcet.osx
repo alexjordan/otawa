@@ -31,8 +31,7 @@
 
 <platform>
 	<xi:include href="patmos_wcet/pipeline.xml"/>
-	<!--xi:include href="tricore/cache.xml"/-->
-	<!--xi:include href="tricore/mem.xml"/-->
+	<xi:include href="patmos_wcet/memory.xml"/-->
 </platform>
 
 <script>

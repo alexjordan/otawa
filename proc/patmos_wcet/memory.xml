@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<memory>
+	<banks>
+		<bank>
+			<name>RAM</name>
+			<address><offset>0x00000000</offset></address>
+			<size>0x00040000</size>
+			<type>DRAM</type>
+			<latency>10</latency>
+			<writable>true</writable>
+			<cachable>true</cachable>
+		</bank>
+		<bank>
+			<name>LOCAL</name>
+			<address><offset>0x80000000</offset></address>
+			<size>0x00100000</size>
+			<type>SPM</type>
+			<latency>1</latency>
+			<writable>true</writable>
+			<cachable>true</cachable>
+		</bank>
+	</banks>
+</memory>
