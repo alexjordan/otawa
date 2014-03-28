@@ -1,6 +1,18 @@
 Patmos Plugin for OTAWA
 =======================
 
+This repository contains the Patmos plugin code for OTAWA.
+
+Find out more about OTAWA at
+
+  http://www.otawa.fr/
+
+Find out more about Patmos / T-CREST at
+
+  http://patmos.compute.dtu.dk/
+  http://www.t-crest.org/
+
+
 Contained Files
 ---------------
 
@@ -22,8 +34,9 @@ make
 make install
 
 
-Useful Commands
----------------
+Useful Commands/Quick guide
+---------------------------
+
 - patmos/disasm/disasm <elf>
   Disassemble an ELF file
 
@@ -32,3 +45,4 @@ Useful Commands
 
 - otawa-core/bin/owcet -s patmos.osx <elf>
   Run the WCET analysis
+
