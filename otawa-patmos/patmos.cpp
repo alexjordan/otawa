@@ -87,7 +87,7 @@ public:
             map[PATMOS_REG_R(i)] = regR[i];
 	}
         for(int i = 0; i < 16; i++) {
-            //map[PATMOS_REG_S(i)] = regS[i];
+            map[PATMOS_REG_S(i)] = regS[i];
         }
         map[PATMOS_REG_MCB] = &regMCB;
         //map[PATMOS_REG_PC]  = &regPC;
@@ -292,9 +292,9 @@ public:
 	: Inst(process, kind, addr, size), _target(0), isTargetDone(false) {
 		patmos_inst_t *inst;
 		inst = patmos_decode(proc.patmosDecoder(), (patmos_address_t)address());
-		otawa::delayed_t delay = patmos_delayed(inst);
-		if(delay != otawa::DELAYED_None)
-			otawa::DELAYED(this) = delay;
+		_delaySlots = patmos_delayed(inst);
+		if(_delaySlots > 0)
+			otawa::DELAYED(this) = otawa::DELAYED_Always;
 	}
 
 	virtual ot::size size() const { return 4; }
@@ -309,11 +309,20 @@ public:
 		return _target;
 	}
 
+        virtual delayed_t delayType(void) {
+	  return _delaySlots > 0 ? otawa::DELAYED_Always : otawa::DELAYED_None;
+	}
+
+	virtual int delaySlots(void) {
+	  return _delaySlots;
+	}
+
 protected:
 	virtual patmos_address_t decodeTargetAddress(void);
 
 private:
 	otawa::Inst *_target;
+	int _delaySlots;
 	bool isTargetDone;
 };
 

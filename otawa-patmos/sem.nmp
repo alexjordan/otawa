@@ -82,8 +82,8 @@ macro BRANCH(a) = "_BRANCH"(a)
 macro TRAP = "_TRAP"()
 macro CONT = "_CONT"()
 macro IF(c,s,j) = "_IF"(c,s,j)
-macro LOAD(d, s1, s2) = "_LOAD"(d, s1, s2)
-macro STORE(d, s1, s2) = "_STORE"(d, s1, s2)
+macro LOAD(d, addr, type) = "_LOAD"(d, addr, type)
+macro STORE(d, addr, type) = "_STORE"(d, addr, type)
 macro SCRATCH(d) = "_SCRATCH"(d)
 macro SET(d, s) = "_SET"(d, s)
 macro SETI(d, i) = "_SETI"(d, i)
@@ -354,7 +354,7 @@ extend STT_fmt
 	  GET_REG(T1, ra);
 	  MEM_ADDR(T2, T1, imm7);
 	  GET_REG(T1, rs);
-	  STORE(T2, T1, get_mem_type(func));
+	  STORE(T1, T2, get_mem_type(func));
 	}
 
 

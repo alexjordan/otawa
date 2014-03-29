@@ -47,6 +47,9 @@ Useful Commands/Quick guide
 - otawa-core/bin/dumpcfg -Did <elf> > out.dot
   Dump the CFG
 
+- otawa-core/bin/odfa test/bs.elf -c -s -C -r "\$r31=0x400000" -r "\$s6=0x300000" -r "\$r30=0x400000"
+  Run a dataflow analysis
+
 - otawa-core/bin/owcet -s patmos.osx <elf>
   Run the WCET analysis
 
