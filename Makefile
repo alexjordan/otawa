@@ -45,8 +45,10 @@ otawa:
 	cd gliss2 && $(MAKE)
 	cd $(BUILD_PATH)/elm && $(MAKE)
 	cd $(BUILD_PATH)/gel && $(MAKE)
-	cd $(BUILD_PATH)/otawa && $(MAKE)
+	cd $(BUILD_PATH)/otawa && $(MAKE) 
 
+otawa-install:
+	cd $(BUILD_PATH)/otawa && $(MAKE) install
 
 config:
 	mkdir -p $(BUILD_PATH)/otawa-patmos
@@ -62,8 +64,8 @@ patmos:
 clean:
 	cd patmos && $(MAKE) clean
 	cd build/otawa-patmos && $(MAKE) clean
-	cd build/proc && $(MAKE) clean
+	cd build/patmos-proc && $(MAKE) clean
 
 install:
 	cd build/otawa-patmos && $(MAKE) install
-	cd build/proc && $(MAKE) install
+	cd build/patmos-proc && $(MAKE) install
