@@ -56,7 +56,7 @@ namespace otawa { namespace patmos {
  */
 static hard::PlainBank regR("D", hard::Register::INT,  32, "$r%d", 32);
 static hard::PlainBank regS("S", hard::Register::INT,  32, "$s%d", 16);
-static hard::PlainBank regP("P", hard::Register::BITS,  1, "$p%d",  8);
+static hard::PlainBank regP("P", hard::Register::INT,   1, "$p%d",  8);
 
 static hard::Register  regMCB("MCB", hard::Register::ADDR, 32);
 static hard::Register  regPC ("PC",  hard::Register::ADDR, 32);
@@ -89,6 +89,9 @@ public:
         for(int i = 0; i < 16; i++) {
             map[PATMOS_REG_S(i)] = regS[i];
         }
+	for (int i = 0; i < 8; i++) {
+	    map[PATMOS_REG_P(i)] = regP[i];
+	}
         map[PATMOS_REG_MCB] = &regMCB;
         //map[PATMOS_REG_PC]  = &regPC;
         //map[PATMOS_REG_NPC] = &regNPC;
@@ -124,13 +127,13 @@ public:
 
         // otawa::Platform overload
         virtual bool accept(const Identification& id)
-                { return id.abi() == "elf" && id.architecture() == "patmos"; }
+                { return id.abi() == "eabi" && id.architecture() == "patmos"; }
 };
 
 /**
  * Identification of the default platform.
  */
-const Platform::Identification Platform::ID("patmos-elf-");
+const Platform::Identification Platform::ID("patmos-");
 
 
 /**

@@ -39,6 +39,7 @@ mem LM32 [ MEM_ADDR_SIZE >> 2, u32 ] alias = LM[0]
 // Registers
 reg R	[ NUM_GPR, word ]
 reg S   [ NUM_SPR, word ]
+reg P   [ NUM_PRR, bit ]
 reg PC	[ 1, word ]	pc = 1
 reg nPC	[ 1, word ]	npc = 1
 
@@ -79,6 +80,8 @@ mode reg_idx(i: card(5)) = R[i]
 mode sreg_idx(i: card(4)) = S[i]
   syntax = format("$s%d", i)
   image = format("%4b", i)
+  // True if this SPR stores the predicates
+  is_predreg = (i == 0)
 
 // Type for predicate operand (no negate bit)
 mode pred_idx(i: card(3)) = SZ<i..i>
@@ -91,7 +94,9 @@ mode npred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
   // Making the 'if n' outside of format to avoid compiler warnings about empty strings.
   syntax = if n then format("!$p%d", i) else format("$p%d", i) endif
   image = format("%1b%3b", n, i)
+  negated = n
   always_true = (n == 0 && i == 0)
+  always_false = (n == 1 && i == 0)
 
 // Type for predicate guards (predicate with negate bit used as guard)
 mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
@@ -101,7 +106,9 @@ mode gpred_idx(n: bit, i: card(3)) = if n then !SZ<i..i> else SZ<i..i> endif
              format("(%s$p%d)", if n then "!" else " " endif, i)
 	   endif
   image = format("%1b%3b", n, i)
+  negated = n
   always_true = (n == 0 && i == 0)
+  always_false = (n == 1 && i == 0)
 
 
 
