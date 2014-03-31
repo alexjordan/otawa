@@ -87,7 +87,7 @@ public:
             map[PATMOS_REG_R(i)] = regR[i];
 	}
         for(int i = 0; i < 16; i++) {
-            //map[PATMOS_REG_S(i)] = regS[i];
+            map[PATMOS_REG_S(i)] = regS[i];
         }
         map[PATMOS_REG_MCB] = &regMCB;
         //map[PATMOS_REG_PC]  = &regPC;
@@ -317,11 +317,20 @@ public:
 		return _target;
 	}
 
+        virtual delayed_t delayType(void) {
+	  return _delaySlots > 0 ? otawa::DELAYED_Always : otawa::DELAYED_None;
+	}
+
+	virtual int delaySlots(void) {
+	  return _delaySlots;
+	}
+
 protected:
 	virtual patmos_address_t decodeTargetAddress(void);
 
 private:
 	otawa::Inst *_target;
+	int _delaySlots;
 	bool isTargetDone;
 };
 
@@ -804,12 +813,12 @@ Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 
 } }	// otawa::patmos
 
-// Semantics information - Generics
+// Semantics information - Generic functions and constants
 #define _NOP()			block.add(otawa::sem::nop())
 #define _BRANCH(d)		block.add(otawa::sem::branch(d))
 #define _TRAP()		        block.add(otawa::sem::trap())
 #define _CONT()		        block.add(otawa::sem::cont())
-#define _IF(d, s1, s2)		block.add(otawa::sem::_if(d, s1, s2))
+#define _IF(cond, s1, jmp)	block.add(otawa::sem::_if(cond, s1, jmp))
 #define _LOAD(d, s1, s2)	block.add(otawa::sem::load(d, s1, s2))
 #define _STORE(d, s1, s2)	block.add(otawa::sem::store(d, s1, s2))
 #define _SCRATCH(d)		block.add(otawa::sem::scratch(d))
@@ -840,6 +849,14 @@ Feature<NoProcessor> INFO_FEATURE("otawa::patmos::INFO_FEATURE");
 #define _ULE			otawa::sem::ULE
 #define _UGE			otawa::sem::UGE
 #define _UGT			otawa::sem::UGT
+#define _INT8			otawa::sem::INT8
+#define _INT16			otawa::sem::INT16
+#define _INT32			otawa::sem::INT32
+#define _INT64			otawa::sem::INT64
+#define _UINT8			otawa::sem::UINT8
+#define _UINT16			otawa::sem::UINT16
+#define _UINT32			otawa::sem::UINT32
+#define _UINT64			otawa::sem::UINT64
 // Semantics information - Patmos bindings
 #define _R(n)			otawa::patmos::regR[n]->platformNumber()
 #define _S(n)			otawa::patmos::regS[n]->platformNumber()

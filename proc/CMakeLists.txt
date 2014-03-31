@@ -19,14 +19,15 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 # configuration
-set(SCRIPT		"patmos_wcet")	# machine model
-set(NAMESPACE	"tcrest")		# namespace (classes must be contained in the namespace otawa::model)
-set(FILES						# cache, pipeline, memory
-				pipeline.xml)
-set(MODULES	)					# used modules (to pass to otawa-config=
-set(SOURCES 	hook.cpp		# sources of the plugin
-				BBTimer.cpp
-	)		
+set(SCRIPT      "patmos_wcet")	# machine model
+set(NAMESPACE   "tcrest")	# namespace (classes must be contained in the namespace otawa::model)
+set(FILES			# cache, pipeline, memory
+	      	pipeline.xml)
+set(MODULES	)		# used modules (to pass to otawa-config=
+set(SOURCES 	hook.cpp	# sources of the plugin
+		BBTimer.cpp
+		)		
+
 
 
 # script
@@ -52,7 +53,7 @@ include_directories("${CMAKE_SOURCE_DIR}" ".")
 add_library(${SCRIPT} SHARED ${SOURCES})
 set_property(TARGET ${SCRIPT} PROPERTY PREFIX "")
 set_property(TARGET ${SCRIPT} PROPERTY COMPILE_FLAGS "${OTAWA_CFLAGS}")
-target_link_libraries(${SCRIPT} "${OTAWA_LDFLAGS} ${CMAKE_SOURCE_DIR}/../build/patmos.so")
+target_link_libraries(${SCRIPT} "${OTAWA_LDFLAGS} ${CMAKE_SOURCE_DIR}/../build/otawa-patmos/patmos.so")
 
 # installation
 if(NOT PREFIX)
