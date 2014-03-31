@@ -6,11 +6,12 @@
 <name>Patmos</name>
 
 <info>
-	<h1>PatMOS</h1>
+	<h1>Patmos</h1>
 	
 	<h2>Description</h2>
-	<p>This is the OTAWA implementation of WCET computation for T-CREST / PatMOS processor.
-	Refer <a href="http://www.t-crest.org/">here</a> for more detils.</p>
+	<p>This is the OTAWA implementation of WCET computation for T-CREST / Patmos processor.
+	Refer to <a href="http://patmos.compute.dtu.dk/">the Patmos documentation page</a> and 
+	<a href="http://www.t-crest.org/">the T-CREST webpage</a> for more details.</p>
 	
 	<h2>Implementation State</h2>
 	List of what is implemented so far:
