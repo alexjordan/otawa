@@ -17,6 +17,7 @@ otawa-tricore
 
 # Ignore build directories
 build/
+out/
 patmos/disasm
 patmos/sim
 patmos/include
