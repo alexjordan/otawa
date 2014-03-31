@@ -36,6 +36,7 @@
 
 <script>
 	<!--step require="otawa::VIRTUALIZED_CFG_FEATURE"/-->
+	<step require="otawa::DELAYED_CFG_FEATURE"/>
 	<step processor="tcrest::patmos_wcet::BBTimer">
 		<config name="otawa::GRAPHS_OUTPUT_DIRECTORY" value="out"/>
 	</step>

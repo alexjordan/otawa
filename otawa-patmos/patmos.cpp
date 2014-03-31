@@ -147,8 +147,7 @@ const Platform::Identification Platform::ID("patmos-elf-");
  *   - the recognition of the instruction,
  *   - the assignment of the memory pointer.
  */
-class Process: public otawa::Process
-{
+class Process: public otawa::Process, public otawa::DelayedInfo {
 public:
 	Process(Manager *manager, hard::Platform *pf, const PropList& props = PropList::EMPTY);
 
@@ -194,6 +193,20 @@ public:
 		throw (UnsupportedFeatureException);
 	virtual void getAddresses(cstring file, int line, Vector<Pair<Address, Address> >& addresses)
 		throw (UnsupportedFeatureException);
+
+	// DelayedInfo implementation
+	virtual delayed_t type(Inst *inst) {
+		if(inst->isControl())
+			return otawa::DELAYED_Always;
+		else
+			return otawa::DELAYED_None;
+	}
+
+	virtual int count(Inst *oinst) {
+		patmos_inst_t *inst;
+		inst = patmos_decode(patmosDecoder(), (patmos_address_t)oinst->address());
+		return patmos_delayed(inst);
+	}
 
 protected:
 	friend class Segment;
@@ -290,11 +303,6 @@ public:
 
 	inline BranchInst(Process& process, kind_t kind, Address addr, ot::size size)
 	: Inst(process, kind, addr, size), _target(0), isTargetDone(false) {
-		patmos_inst_t *inst;
-		inst = patmos_decode(proc.patmosDecoder(), (patmos_address_t)address());
-		otawa::delayed_t delay = patmos_delayed(inst);
-		if(delay != otawa::DELAYED_None)
-			otawa::DELAYED(this) = delay;
 	}
 
 	virtual ot::size size() const { return 4; }
@@ -387,7 +395,8 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 	provide(CONTROL_DECODING_FEATURE);
 	provide(REGISTER_USAGE_FEATURE);
 	provide(MEMORY_ACCESSES);
-	provide(DELAYED_FEATURE);
+	DELAYED_INFO(this) = this;
+	provide(DELAYED2_FEATURE);
 }
 
 

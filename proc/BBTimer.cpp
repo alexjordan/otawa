@@ -28,7 +28,7 @@ public:
 		for(ParExePipeline::StageIterator stage(proc->pipeline()); stage; stage++) {
 			if(stage->name() == "MEM")
 				mem_stage = stage;
-			else if(stage->name() == "EXE")
+			else if(stage->name() == "EX")
 				for(int i = 0; i < stage->numFus(); i++)
 					for(ParExePipeline::StageIterator fu(stage->fu(i)); fu; fu++)
 						if(fu->name() == "ALU")
