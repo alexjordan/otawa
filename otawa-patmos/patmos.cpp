@@ -203,9 +203,27 @@ public:
 	}
 
 	virtual int count(Inst *oinst) {
+
+		// get the rough delay slot information (in bundles)
 		patmos_inst_t *inst;
 		inst = patmos_decode(patmosDecoder(), (patmos_address_t)oinst->address());
-		return patmos_delayed(inst);
+		int n = patmos_delayed(inst);
+
+		// convert it in instructions
+		int cnt = 0;
+		Inst *i = oinst;
+		for(; n; n--) {
+			Address a = i->topAddress();
+			Address t = a + info.bundleSize(a);
+			while(a < t) {
+				i = findInstAt(i->topAddress());
+				if(!i)
+					throw LoadException(_ << "no slot at " << a << " as it should be!");
+				cnt++;
+				a += i->size();
+			}
+		}
+		return cnt;
 	}
 
 protected:
@@ -230,6 +248,7 @@ private:
 	struct gel_line_map_t *map;
 	struct gel_file_info_t *file;
 	gel_file_t *_gelFile;
+	Info info;
 };
 
 // Process display
@@ -368,7 +387,8 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 	_patmosMemory(0),
 	init(false),
 	map(0),
-	file(0)
+	file(0),
+	info(*this)
 {
 	ASSERTP(manager, "manager required");
 	ASSERTP(platform, "platform required");
@@ -397,7 +417,7 @@ Process::Process(Manager *manager, hard::Platform *platform, const PropList& pro
 		envp = default_envp;
 
 	// handle features
-	INFO(this) = new Info(*this);
+	INFO(this) = &info;
 	provide(INFO_FEATURE);
 	provide(MEMORY_ACCESS_FEATURE);
 	provide(SOURCE_LINE_FEATURE);
