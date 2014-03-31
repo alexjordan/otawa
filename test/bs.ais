@@ -1,0 +1,15 @@
+# configure compiler
+compiler "patmos-llvm";
+
+global method_cache_block_size=32; # PML machine configuration
+cache code size=32, associativity=8, line-size=4,policy=FIFO, may=chaos; # PML machine configuration
+cache data size=1024, associativity=4, line-size=32,policy=LRU, may=chaos; # PML machine configuration
+area 0x00000000 .. 0xffffffff access code read transfer-time = [0,0]; # PML machine configuration
+area 0x00000000 .. 0xffffffff access data read transfer-time = [0,0], data write time = 0; # PML machine configuration
+
+flow 1 (".LBB3_0")<=1 (".LBB3_0"); # linear constraint on block frequencies (source: trace)
+flow 1 (".LBB3_1")<=4 (".LBB3_0"); # linear constraint on block frequencies (source: trace)
+flow 1 (".LBB3_2")<=3 (".LBB3_0"); # linear constraint on block frequencies (source: trace)
+flow 1 (".LBB3_3")<=1 (".LBB3_0"); # linear constraint on block frequencies (source: trace)
+flow 1 (".LBB3_4")<=1 (".LBB3_0"); # linear constraint on block frequencies (source: trace)
+loop ".LBB3_1" max 4 end; # global loop header bound (source: trace)
