@@ -33,17 +33,21 @@
 <platform>
 	<xi:include href="patmos_wcet/pipeline.xml"/>
 	<xi:include href="patmos_wcet/memory.xml"/>
+	<xi:include href="patmos_wcet/caches.xml"/>
 </platform>
 
 <script>
-	<!--step require="otawa::VIRTUALIZED_CFG_FEATURE"/-->
+	<!--step require="otawa::VIRTUALIZED_CFG_FEATURE"-->
 	<step require="otawa::DELAYED_CFG_FEATURE"/>
 	<step processor="tcrest::patmos_wcet::BBTimer">
 		<config name="otawa::GRAPHS_OUTPUT_DIRECTORY" value="out"/>
 	</step>
 	<step require="otawa::ipet::WCET_FEATURE"/>
+	<step processor="otawa::ipet::WCETCountRecorder"/>
+	<step processor="otawa::display::CFGOutput">
+		<!--config name="otawa::display::CFGOutput::PATH" value="wcet.txt"/-->
+	</step>
 </script>
-
 
 </otawa-script>
 	

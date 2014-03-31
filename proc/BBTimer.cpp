@@ -64,7 +64,7 @@ public:
 	}
 
 	virtual void findDataDependencies(void) {
-
+#	if 0
 		// prepare registers bank
 		ParExeNode *regs[reg_count];
 		//elm::array::set(regs, reg_count, static_cast<ParExeNode *>(0));
@@ -106,6 +106,7 @@ public:
 				regs[writs[i]->platformNumber()] = mem_node;
 			}
 		}
+#		endif
 	}
 
 private:
@@ -121,7 +122,7 @@ private:
 		for(node++; node; last = *node, node++) {
 			
 			// inside the bundle
-			if(node->inst()->inst()->address() < btop)
+			if(node->inst()->codePart() == last->inst()->codePart() && node->inst()->inst()->address() < btop)
 				new ParExeEdge(last, *node, ParExeEdge::SLASHED);
 			
 			// new bundle
