@@ -42,7 +42,11 @@
 	<step processor="tcrest::patmos_wcet::BBTimer">
 		<config name="otawa::GRAPHS_OUTPUT_DIRECTORY" value="out"/>
 	</step>
+
+	<!-- WCET computation -->
+	<step require="tcrest::patmos::METHOD_CACHE_CONTRIBUTION_FEATURE"/>
 	<step require="otawa::ipet::WCET_FEATURE"/>
+	
 	<step processor="otawa::ipet::WCETCountRecorder"/>
 	<step processor="otawa::display::CFGOutput">
 		<!--config name="otawa::display::CFGOutput::PATH" value="wcet.txt"/-->
