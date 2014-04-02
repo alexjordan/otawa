@@ -41,21 +41,31 @@ checkout:
 
 otawa-config:
 	mkdir -p $(BUILD_PATH)/elm
-	cd $(BUILD_PATH)/elm && cmake $(ELM_SOURCE_PATH)
+	cd $(BUILD_PATH)/elm && cmake $(OTAWA_SOURCE_PATH)/elm
 	mkdir -p $(BUILD_PATH)/gel
-	cd $(BUILD_PATH)/gel && cmake $(GEL_SOURCE_PATH)
+	cd $(BUILD_PATH)/gel && cmake $(OTAWA_SOURCE_PATH)/gel
 	mkdir -p $(BUILD_PATH)/otawa
-	cd $(BUILD_PATH)/otawa && cmake $(OTAWA_SOURCE_PATH)
+	cd $(BUILD_PATH)/otawa && cmake $(OTAWA_SOURCE_PATH)/otawa
+	mkdir -p $(BUILD_PATH)/otawa-sparc
+	cd $(BUILD_PATH)/otawa-sparc && cmake $(OTAWA_SOURCE_PATH)/otawa-sparc
+	mkdir -p $(BUILD_PATH)/otawa-leon
+	cd $(BUILD_PATH)/otawa-leon && cmake $(OTAWA_SOURCE_PATH)/otawa-leon
 
 otawa:
 	# Can we build gliss2 out-of-tree?
 	cd $(OTAWA_SOURCE_PATH)/gliss2 && $(MAKE)
+	cd $(OTAWA_SOURCE_PATH)/ppc2 && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
+	cd $(OTAWA_SOURCE_PATH)/sparc && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
 	cd $(BUILD_PATH)/elm && $(MAKE)
 	cd $(BUILD_PATH)/gel && $(MAKE)
 	cd $(BUILD_PATH)/otawa && $(MAKE) 
+	cd $(BUILD_PATH)/otawa-sparc && $(MAKE) 
+	cd $(BUILD_PATH)/otawa-leon  && $(MAKE) 
 
 otawa-install:
 	cd $(BUILD_PATH)/otawa && $(MAKE) install
+	cd $(BUILD_PATH)/otawa-sparc && $(MAKE) install
+	cd $(BUILD_PATH)/otawa-leon  && $(MAKE) install
 
 
 #
