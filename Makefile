@@ -38,6 +38,9 @@ checkout:
 	if [ ! -d sparc ];       then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/sparc/trunk       $(OTAWA_SOURCE_PATH)/sparc; fi
 	if [ ! -d otawa-sparc ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-sparc/trunk $(OTAWA_SOURCE_PATH)/otawa-sparc; fi
 	if [ ! -d otawa-leon ];  then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-leon/trunk  $(OTAWA_SOURCE_PATH)/otawa-leon; fi
+	if [ ! -d tricore ];     then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/tricore/trunk     $(OTAWA_SOURCE_PATH)/tricore; fi
+	if [ ! -d tricore-1798 ];   then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/tricore-1798/trunk   $(OTAWA_SOURCE_PATH)/tricore-1798; fi
+	if [ ! -d otawa-tricore ];  then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-tricore/trunk  $(OTAWA_SOURCE_PATH)/otawa-tricore; fi
 
 otawa-config:
 	mkdir -p $(BUILD_PATH)/elm
@@ -75,20 +78,20 @@ otawa-install:
 config:
 	mkdir -p $(BUILD_PATH)/otawa-patmos
 	cd $(BUILD_PATH)/otawa-patmos && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config -DGLISS_PATH=$(GLISS_PATH) $(PATMOS_SOURCE_PATH)/otawa-patmos
-	mkdir -p $(BUILD_PATH)/patmos-proc
-	cd $(BUILD_PATH)/patmos-proc && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config $(PATMOS_SOURCE_PATH)/proc
+	mkdir -p $(BUILD_PATH)/patmos-wcet
+	cd $(BUILD_PATH)/patmos-wcet && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config $(PATMOS_SOURCE_PATH)/patmos-wcet
 
 patmos:
 	cd $(PATMOS_SOURCE_PATH)/patmos && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
 	cd $(BUILD_PATH)/otawa-patmos && $(MAKE)
-	cd $(BUILD_PATH)/patmos-proc && $(MAKE)
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE)
 
 clean:
 	cd $(PATMOS_SOURCE_PATH)/patmos && $(MAKE) clean
 	cd $(BUILD_PATH)/otawa-patmos && $(MAKE) clean
-	cd $(BUILD_PATH)/patmos-proc && $(MAKE) clean
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE) clean
 
 install:
 	cd $(BUILD_PATH)/otawa-patmos && $(MAKE) install
-	cd $(BUILD_PATH)/patmos-proc && $(MAKE) install
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE) install
 

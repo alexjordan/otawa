@@ -18,8 +18,8 @@ Contained Files
 
 ```
 patmos/         Gliss2 definition of the Patmos ISA
-otawa-patmos/   OTAWA ISA description for Patmos
-proc/		WCET analysis plugin
+otawa-patmos/   Extends the Patmos ISA with semantic information for OTAWA
+patmos-wcet/	OTAWA WCET analysis plugin and script
 test/		Binary test files
 ```
 
@@ -28,6 +28,9 @@ Installation
 
 # Get otawa
 
+```
+make checkout
+```
 
 # Create a Makefile.cfg, edit to your paths
 
