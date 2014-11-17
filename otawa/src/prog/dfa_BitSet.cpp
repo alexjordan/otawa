@@ -5,7 +5,7 @@
  *	prog/util_BitSet.h -- BitSet class implementation.
  */
 
-#include <otawa/util/BitSet.h>
+#include <otawa/dfa/BitSet.h>
 
 namespace otawa {
 
