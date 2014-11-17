@@ -1,0 +1,17 @@
+====== Installation ======
+
+===== Requirements =====
+
+  * GCC (or MinGW GCC)
+  * CMake
+  * libxml2, libxslt (optional)
+
+==== To install =====
+
+to install in directory DIR:
+
+<code sh>
+> cd elm
+> cmake . -DCMAKE_INSTALL_PREFIX=DIR
+> make install
+</code>

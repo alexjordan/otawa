@@ -1,0 +1,3 @@
+
+  * elm::Option now supports references.
+  * type_info<T>::embed_t, put, get -- support to embed references in assignable variable.

@@ -1,0 +1,30 @@
+Elm Developper Information
+
+Directories:
+	include/		ELM headers
+	src/			ELM sources
+	test/			Test programs
+	tools/			Tool to work with ELM.
+
+Bootstrap:
+	cmake .
+Under Windows:
+	cmake . -G "MSYS Makefiles"
+
+Auto-documentation:
+	xdg-open autodoc/index.html
+
+Re-generating the autodocumentation:
+	cmake . -DAUTODOC=ON
+
+Activating the test compilation:
+	cmake . -DELM_TEST=ON
+
+Testing:
+	test/test			launch all automated tests
+	test/test-thread	thread classes
+
+Under Windows:
+	move src/libelm.dll to test/
+
+
