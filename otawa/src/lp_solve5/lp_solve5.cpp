@@ -28,10 +28,10 @@
 #include <otawa/ilp/ILPPlugin.h>
 #include <otawa/prog/WorkSpace.h>
 #if defined(__unix) || defined(__APPLE__)
-#include <lp_lib.h>
+#include <lpsolve/lp_lib.h>
 #elif defined(__WIN32) || defined(__WIN64)
 extern "C"{
-#include <lp_lib.h>
+#include <lpsolve/lp_lib.h>
 }
 #endif
 #include <math.h>
