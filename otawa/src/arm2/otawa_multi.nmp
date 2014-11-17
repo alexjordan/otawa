@@ -1,0 +1,4 @@
+
+
+extend LDM, STM
+	otawa_multi = reglist 
