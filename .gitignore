@@ -1,0 +1,55 @@
+#==============================================================================#
+# File extensions to be ignored anywhere in the tree.
+#==============================================================================#
+# Temp files created by most text editors.
+*~
+# Merge files created by git.
+*.orig
+# Byte compiled python modules.
+*.pyc
+# vim swap files
+.*.swp
+.sw?
+# SCMs and IDEs
+.hg
+.hgtags
+.cdtproject
+.cvsignore
+.project
+
+# build products
+CMakeCache.txt
+CMakeFiles/
+install_manifest.txt
+*.cmake
+*.so
+# ocaml
+*.cma
+*.cmi
+*.cmo
+.dep/
+
+#==============================================================================#
+# otawa
+#==============================================================================#
+# otawa CMake generated files
+otawa/**/Makefile
+
+#==============================================================================#
+# gliss2
+#==============================================================================#
+gliss2/gep/gep
+gliss2/gep/gliss-attr
+gliss2/gep/gliss-disasm
+gliss2/gep/gliss-used-regs
+gliss2/gep/templater.ml
+gliss2/irg/config.ml
+gliss2/irg/lexer.ml
+gliss2/irg/mkirg
+gliss2/irg/parser.ml
+gliss2/irg/parser.mli
+gliss2/irg/parser.output
+gliss2/irg/print_irg
+gliss2/optirg/formatlexer.ml
+gliss2/optirg/optirg
+
