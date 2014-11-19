@@ -52,6 +52,8 @@ execute_process(COMMAND "${OTAWA_CONFIG}" --prefix OUTPUT_VARIABLE OTAWA_PREFIX 
 # plugin definition
 set(CMAKE_INSTALL_RPATH "\\$ORIGIN/../../../:\\$ORIGIN/../../loader")
 include_directories("${CMAKE_SOURCE_DIR}" ".")
+# depend on otawa et al. headers to trigger rebuild of plugin
+include_directories("${OTAWA_PREFIX}/include")
 add_library(${SCRIPT} SHARED ${SOURCES})
 set_property(TARGET ${SCRIPT} PROPERTY PREFIX "")
 set_property(TARGET ${SCRIPT} PROPERTY COMPILE_FLAGS "${OTAWA_CFLAGS}")
