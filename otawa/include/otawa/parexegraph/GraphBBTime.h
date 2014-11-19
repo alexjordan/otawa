@@ -357,9 +357,16 @@ void GraphBBTime<G>::configure(const PropList& props) {
 		elm::StringBuffer buffer;
 		buffer << _graphs_dir_name << "/";
 		buffer << "b" << bb_number << "-ctxt" << context_index << "-case" << case_index << ".dot";
-		elm::io::OutFileStream dotStream(buffer.toString());
-		elm::io::Output dotFile(dotStream);
-		graph->dump(dotFile, info);
+		try {
+			elm::io::OutFileStream dotStream(buffer.toString());
+			elm::io::Output dotFile(dotStream);
+			graph->dump(dotFile, info);
+		} catch (elm::io::IOException& e) {
+			warn(_ << " could not write to graph file: " << e.message());
+			// below segfaults:
+			//warn(_ << " could not write to graph file '" << buffer.toString() << "': " << e.message());
+		}
+
 	}
 
 
