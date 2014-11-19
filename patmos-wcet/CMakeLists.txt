@@ -20,7 +20,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 
 # configuration
 set(SCRIPT      "patmos_wcet")	# machine model
-set(NAMESPACE   "patmos")	# namespace (classes must be contained in the namespace otawa::model)
+set(NAMESPACE   "tcrest")	# namespace (classes must be contained in the namespace otawa::model)
 set(FILES	memory.xml	# cache, pipeline, memory
 	      	pipeline.xml
 	      	caches.xml)
