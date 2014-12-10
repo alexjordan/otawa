@@ -65,6 +65,7 @@ public:
 	static const kind_t IS_INDIRECT	= 0x10000;
 	static const kind_t IS_UNKNOWN	= 0x20000;
 	static const kind_t IS_ATOMIC	= 0x40000;
+    static const kind_t IS_CACHED   = 0x80000;
 
 	// null instruction
 	static Inst& null;
@@ -99,6 +100,7 @@ public:
 	inline bool isIndirect(void) { return oneOf(IS_INDIRECT); }
 	inline bool isUnknown(void) { return oneOf(IS_UNKNOWN); }
 	inline bool isAtomic(void) { return oneOf(IS_ATOMIC); }
+    inline bool isCached(void) { assert(isMem()); return oneOf(IS_CACHED); }
 	 
 	// other accessors
 	virtual const elm::genstruct::Table<hard::Register *>& readRegs(void);

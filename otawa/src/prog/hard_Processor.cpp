@@ -312,6 +312,7 @@ void __unserialize(Unserializer& s, otawa::hard::Dispatch::type_t& v) {
 			VALUE(otawa::Inst::IS_SHIFT),
 			VALUE(otawa::Inst::IS_TRAP),
 			VALUE(otawa::Inst::IS_INTERN),
+            VALUE(otawa::Inst::IS_CACHED),
 			value("", 0)
 	};
 

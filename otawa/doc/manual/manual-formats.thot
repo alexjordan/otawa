@@ -152,6 +152,7 @@ Known flags are derived from the ''otawa::Inst'' class kinds and includes:
   * IS_MEM -- instruction performing memory access,
   * IS_LOAD -- instruction reading in memory,
   * IS_STORE -- instruction writing in memory,
+  * IS_CACHED -- instruction accessing memory through the data cache,
   * IS_INT -- instruction working on integers,
   * IS_FLOAT -- instruction working on floats,
   * IS_ALU -- computation instruction,

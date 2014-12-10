@@ -113,6 +113,7 @@ static struct {
 	{ Inst::IS_MEM, "MEM" },
 	{ Inst::IS_LOAD, "LOAD" },
 	{ Inst::IS_STORE, "STORE" },
+    { Inst::IS_CACHED, "CACHED" },
 	{ Inst::IS_INT, "INT" },
 	{ Inst::IS_FLOAT, "FLOAT" },
 	{ Inst::IS_ALU, "ALU" },

@@ -75,6 +75,7 @@ with each bit giving a specific information:
     * ''IS_LOAD'' - set if the instruction performs memory load (ever induces ''IS_MEM'' to be set),
     * ''IS_STORE'' - set if the instruction performs memory store (ever induces ''IS_MEM'' to be set),
     * ''IS_MULTI'' - set if the instruction performs multiple memory accesses of the same type (ever induces ''IS_MEM'' to be set), 
+    * ''IS_CACHED'' - set if the instruction accesses memory through the data cache (implies ''IS_MEM''), 
   * ''IS_INT'' - set if the instruction handles integer,
   * ''IS_FLOAT'' - set if the  instruction handles floats,
   * ''IS_ALU'' - set if the instruction performs arithmetic or logic operations,

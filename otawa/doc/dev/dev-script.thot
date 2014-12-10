@@ -705,6 +705,7 @@ The supported flags are:
   * ''IS_MEM'' if the instruction performs memory accesss,
   * ''IS_LOAD'' if the instruction loads of data from memory,
   * ''IS_STORE'' if the instruction stores data to memory,
+  * ''IS_CACHED'' if the instruction accesses memory through the data cache,
   * ''IS_INT'' if the instruction works on integer values,
   * ''IS_FLOAT'' if the instruction works on float values,
   * ''IS_ALU'' if the instruction performs arithmetic or logic operation (not address calculation),

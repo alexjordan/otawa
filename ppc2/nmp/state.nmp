@@ -26,6 +26,7 @@ let IS_TRAP    = 0x02000
 let IS_INTERN  = 0x04000
 let IS_MULTI   = 0x08000
 let IS_SPECIAL = 0x10000
+let IS_CACHED  = 0x80000
 
 // old kind of instructions
 let ARITH = IS_ALU | IS_INT  //"0"       // Integer Add and Sub Instructions
@@ -33,8 +34,8 @@ let MULDIV = IS_ALU | IS_INT //"1"     // Integer Mul and Div Instructions
 let INTCMP = IS_ALU | IS_INT //"2"     // Integer Compare Instructions
 let LOGIC = IS_ALU | IS_INT //"3"       // Integer Logical instructions
 let SHIFTROT = IS_ALU | IS_SHIFT | IS_INT //"4" // Int shift and rotate
-let STORE = IS_MEM | IS_STORE | IS_INT //"5"       // Integer Stores including byte reverse, multiple and string
-let LOAD = IS_MEM | IS_LOAD | IS_INT //"6"         // Integer Loads including byte reverse, multiple and string
+let STORE = IS_MEM | IS_STORE | IS_INT | IS_CACHED //"5"       // Integer Stores including byte reverse, multiple and string
+let LOAD = IS_MEM | IS_LOAD | IS_INT | IS_CACHED //"6"         // Integer Loads including byte reverse, multiple and string
 let MEMSYNC = IS_INTERN //"7"   // Memory Synchronization Instructions
 let BRANCH = IS_CONTROL //"8"
 let CRLI = IS_INTERN //"9"         // Condition Register Logical Instructions

@@ -81,6 +81,11 @@ const elm::genstruct::Table<hard::Register *> Inst::no_regs;
  */
 
 /**
+ * @var Inst::IS_CACHED
+ * Mask of an instruction performing a memory access through the data cache.
+ */
+
+/**
  * @var Inst::IS_INT
  * Mask of an instruction processing integer.
  * @note Conversion instruction must have both masks IS_INT and IS_FLOAT.
@@ -152,7 +157,7 @@ const elm::genstruct::Table<hard::Register *> Inst::no_regs;
  * @ref IS_COND, @ref IS_CONTROL, @ref IS_CALL, @ref IS_RETURN,
  * @ref IS_MEM, @ref IS_LOAD, @ref IS_STORE, @ref IS_INT, @ref IS_FLOAT, @ref IS_ALU,
  * @ref IS_MUL, @ref IS_DIV, @ref IS_SHIFT, @ref IS_TRAP, @ref IS_INTERN,
- * @ref IS_MULTI, @ref IS_SPECIAL, @ref IS_UNKNOWN.
+ * @ref IS_MULTI, @ref IS_SPECIAL, @ref IS_UNKNOWN, @ref IS_CACHED.
  */
 
 
@@ -204,6 +209,12 @@ const elm::genstruct::Table<hard::Register *> Inst::no_regs;
  * @return True if it is a store.
  */
 
+
+/**
+ * @fn  bool Inst::isCached(void);
+ * Test if the instruction is a memory access passing through the data cache.
+ * @return True if the instruction accesses memory through the data cache.
+ */
 
 /**
  * @fn  bool Inst::isBranch(void);

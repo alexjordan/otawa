@@ -17,6 +17,7 @@ let IS_TRAP		= 0x00002000
 let IS_INTERN	= 0x00004000
 let IS_MULTI	= 0x00008000
 let IS_SPECIAL	= 0x00010000
+let IS_CACHED   = 0x00080000
 let IS_DATA_PROCESSING	= 0x80000000
 let IS_IMMEDIATE		= 0x40000000
 let IS_SHIFTED			= 0x20000000
@@ -167,30 +168,31 @@ extend CLZ, SWP
 // ****** memory instructions extensions ******
 
 extend LDM
-	otawa_kind = IS_MEM | IS_MULTI | IS_LOAD
+	otawa_kind = IS_MEM | IS_MULTI | IS_LOAD | IS_CACHED
 		| (if cond.value == 14 then 0 else IS_COND endif)
 		| (if rn.number == 13 && reglist.has_pc then IS_CONTROL | IS_RETURN else 0 endif)
 
 extend STM
-	otawa_kind = IS_MEM | IS_MULTI | IS_STORE
+	otawa_kind = IS_MEM | IS_MULTI | IS_STORE | IS_CACHED
 		| (if cond.value == 14 then 0 else IS_COND endif)
 
 extend LDMIA_thumb
-	otawa_kind = IS_MEM | IS_LOAD | IS_MULTI | IS_INT
+	otawa_kind = IS_MEM | IS_LOAD | IS_MULTI | IS_CACHED | IS_INT
 
 extend POP_thumb
 	otawa_kind =
-		  IS_MEM | IS_LOAD | IS_MULTI | IS_INT
+		  IS_MEM | IS_LOAD | IS_MULTI | IS_CACHED | IS_INT
 		| (if P then IS_CONTROL | IS_RETURN else 0 endif)
 
 extend PUSH_thumb, STMIA_thumb
-	otawa_kind = IS_MEM | IS_STORE | IS_MULTI | IS_INT 
+	otawa_kind = IS_MEM | IS_STORE | IS_MULTI | IS_CACHED | IS_INT 
 
 extend LDR_imm, LDR_shr
  	otawa_kind =
  		  IS_MEM
  		| IS_INT
  		| IS_LOAD
+        | IS_CACHED
  		| (if cond.value == 14 then 0 else IS_COND endif)
  		| (if rd == 15 then IS_CONTROL else 0 endif)
  		| (if rd == 15 && rn == 13 then IS_RETURN else 0 endif) 
@@ -200,6 +202,7 @@ extend STR_imm, STR_shr
  		  IS_MEM
  		| IS_INT
  		| IS_STORE
+        | IS_CACHED
  		| (if cond.value == 14 then 0 else IS_COND endif)
 
 extend STRH_imm, STRH_shr
@@ -208,10 +211,11 @@ extend STRH_imm, STRH_shr
  		| IS_INT
  		| (if cond.value == 14 then 0 else IS_COND endif)
  		| IS_STORE
+        | IS_CACHED
 
 extend STR_imm_thumb, STR_shr_thumb, STR_imm2_thumb, STRB_imm_thumb,
 STRB_shr_thumb, STRH_imm_thumb, STRH_shr_thumb
-	otawa_kind = IS_MEM | IS_STORE | IS_INT
+	otawa_kind = IS_MEM | IS_STORE | IS_CACHED | IS_INT
 
 extend LDRH_imm, LDRH_shr, LDRSB_imm, LDRSB_shr,
 LDRSH_imm, LDRSH_shr
@@ -220,12 +224,13 @@ LDRSH_imm, LDRSH_shr
  		| IS_INT
  		| (if cond.value == 14 then 0 else IS_COND endif)
  		| IS_LOAD
+        | IS_CACHED
  		| (if rd == 15 then IS_CONTROL else 0 endif)
 
 extend LDR_imm_thumb, LDR_shr_thumb, LDR_imm2_thumb, LDR_imm3_thumb,
 LDRB_imm_thumb, LDRB_shr_thumb, LDRH_imm_thumb, LDRH_shr_thumb,
 LDRSB_thumb, LDRSH_thumb
-	otawa_kind = IS_MEM | IS_LOAD | IS_INT 
+	otawa_kind = IS_MEM | IS_LOAD | IS_CACHED | IS_INT 
 
 
  

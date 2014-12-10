@@ -134,6 +134,11 @@ void BlockBuilder::processBB (WorkSpace *ws, CFG *cfg, BasicBlock *bb) {
 
 		// access any ?
 		if(addr.isNull()) {
+            if(!aa->instruction()->isCached()) {
+                if(logFor(LOG_INST))
+                    log << "\t\t\t\t" << aa->instruction() << " access not cached, any\n";
+                continue;
+            }
 			blocks.add(BlockAccess(aa->instruction(), action));
 			if(logFor(LOG_INST))
 				log << "\t\t\t\t" << aa->instruction() << " access any\n";
@@ -151,7 +156,7 @@ void BlockBuilder::processBB (WorkSpace *ws, CFG *cfg, BasicBlock *bb) {
 					<< " accessed from " << aa->instruction()->address());
 		}
 		else
-			cached = bank->isCached();
+			cached = bank->isCached() && aa->instruction()->isCached();
 		if(!cached) {
 			if(logFor(LOG_INST))
 				log << "\t\t\t\t" << aa->instruction() << " access not cached "
