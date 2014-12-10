@@ -18,6 +18,7 @@ let IS_DIV	= 0x00000800
 let IS_SHIFT	= 0x00001000
 let IS_TRAP	= 0x00002000
 let IS_SPECIAL	= 0x00010000
+let IS_CACHED = 0x80000
 
 let IS_DELAYED  = 0x01000000
 let IS_LOCAL    = 0x02000000
@@ -51,10 +52,10 @@ extend SPCt_fmt, SPCf_fmt
 
 // Load and store
 extend LDT_fmt
-	otawa_kind = IS_INT | IS_MEM | IS_LOAD
+	otawa_kind = IS_INT | IS_MEM | IS_LOAD | if func.is_cache then IS_CACHED else NO_KIND endif
 
 extend STT_fmt
-	otawa_kind = IS_INT | IS_MEM | IS_STORE
+	otawa_kind = IS_INT | IS_MEM | IS_STORE | if func.is_cache then IS_CACHED else NO_KIND endif
 
 // Stack control
 extend STCi_fmt, STCr_fmt
