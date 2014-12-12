@@ -1,7 +1,7 @@
 Patmos Plugin for OTAWA
 =======================
 
-This repository contains the Patmos plugin code for OTAWA.
+This directory contains the Patmos plugin code for OTAWA.
 
 Find out more about OTAWA at
 

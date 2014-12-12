@@ -1,78 +1,97 @@
-# Makefile for the Leon architecture using GLISS V2
 
-# configuration
-ARCH = patmos
-GLISS_PREFIX=../../gliss2
-WITH_DISASM=1	# comment it to prevent disassembler building
-#WITH_SIM=1		# comment it to prevent simulator building
+# Path containing the otawa related hg repositories
+OTAWA_SOURCE_PATH?=$(PWD)
+# Path of the patmos-otawa git repository
+PATMOS_SOURCE_PATH?=$(PWD)
+# Temporary build path
+BUILD_PATH?=$(PWD)/build
 
-MEMORY=io_mem
-LOADER=old_elf
-SYSCALL=syscall-linux
+# Installation path of the patmos plugin
+INSTALL_PATH?=$(PWD)/../site
 
+# Path to the otawa installation
+OTAWA_PATH=$(INSTALL_PATH)
+# Path to the gliss2 build
+GLISS_PATH=$(OTAWA_SOURCE_PATH)/gliss2
 
-# files
-GOALS=
-ifdef WITH_DISASM
-GOALS+=$(ARCH)-disasm
-endif
-ifdef WITH_SIM
-GOALS+=$(ARCH)-sim
-endif
-
-SUBDIRS=src sim disasm
-CLEAN=$(ARCH).nml $(ARCH).irg
-DISTCLEAN=include src disasm sim
-
-GFLAGS=\
-	-m mem:$(MEMORY) \
-	-m loader:$(LOADER) \
-	-m code:code \
-	-m env:void_env \
-	-a disasm.c \
-	-a used_regs.c
-
-NMP =\
-	$(ARCH).nmp
+-include Makefile.cfg
 
 
-# targets
-all: lib $(GOALS)
+.PHONY: all checkout otawa patmos config clean install
 
-$(ARCH).nml: $(NMP)
-	$(GLISS_PREFIX)/gep/gliss-nmp2nml.pl $< $@
+all: patmos
 
-$(ARCH).irg: $(ARCH).nml
-	$(GLISS_PREFIX)/irg/mkirg $< $@
+#
+# Targets to build OTAWA and friends itself
+#
 
-src include: $(ARCH).irg
-	$(GLISS_PREFIX)/gep/gep $(GFLAGS) $< -S
+checkout:
+	if [ ! -d gliss2 ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/gliss2/trunk $(OTAWA_SOURCE_PATH)/gliss2; fi
+	if [ ! -d elm ];   then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/elm/trunk     $(OTAWA_SOURCE_PATH)/elm; fi
+	if [ ! -d gel ];   then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/gel/trunk     $(OTAWA_SOURCE_PATH)/gel; fi
+	if [ ! -d otawa ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa/trunk   $(OTAWA_SOURCE_PATH)/otawa; fi
+	# oRange
+	if [ ! -d frontc ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/frontc/trunk $(OTAWA_SOURCE_PATH)/frontc; fi
+	if [ ! -d orange ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/orange/trunk $(OTAWA_SOURCE_PATH)/orange; fi
+	# Architecture plugins
+	if [ ! -d ppc2 ];        then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/ppc2/trunk        $(OTAWA_SOURCE_PATH)/ppc2; fi
+	if [ ! -d sparc ];       then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/sparc/trunk       $(OTAWA_SOURCE_PATH)/sparc; fi
+	if [ ! -d otawa-sparc ]; then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-sparc/trunk $(OTAWA_SOURCE_PATH)/otawa-sparc; fi
+	if [ ! -d otawa-leon ];  then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-leon/trunk  $(OTAWA_SOURCE_PATH)/otawa-leon; fi
+	if [ ! -d tricore ];     then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/tricore/trunk     $(OTAWA_SOURCE_PATH)/tricore; fi
+	if [ ! -d tricore-1798 ];   then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/tricore-1798/trunk   $(OTAWA_SOURCE_PATH)/tricore-1798; fi
+	if [ ! -d otawa-tricore ];  then hg clone https://anon:ok@wwwsecu.irit.fr/hg/TRACES/otawa-tricore/trunk  $(OTAWA_SOURCE_PATH)/otawa-tricore; fi
 
-lib: src include/$(ARCH)/config.h src/disasm.c src/used_regs.c
-	(cd src; $(MAKE))
+otawa-config:
+	mkdir -p $(BUILD_PATH)/elm
+	cd $(BUILD_PATH)/elm && cmake $(OTAWA_SOURCE_PATH)/elm
+	mkdir -p $(BUILD_PATH)/gel
+	cd $(BUILD_PATH)/gel && cmake $(OTAWA_SOURCE_PATH)/gel
+	mkdir -p $(BUILD_PATH)/otawa
+	cd $(BUILD_PATH)/otawa && cmake $(OTAWA_SOURCE_PATH)/otawa
+	mkdir -p $(BUILD_PATH)/otawa-sparc
+	cd $(BUILD_PATH)/otawa-sparc && cmake $(OTAWA_SOURCE_PATH)/otawa-sparc
+	mkdir -p $(BUILD_PATH)/otawa-leon
+	cd $(BUILD_PATH)/otawa-leon && cmake $(OTAWA_SOURCE_PATH)/otawa-leon
 
-$(ARCH)-disasm: lib
-	cd disasm; $(MAKE)
+otawa:
+	# Can we build gliss2 out-of-tree?
+	cd $(OTAWA_SOURCE_PATH)/gliss2 && $(MAKE)
+	cd $(OTAWA_SOURCE_PATH)/ppc2 && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
+	cd $(OTAWA_SOURCE_PATH)/sparc && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
+	cd $(BUILD_PATH)/elm && $(MAKE)
+	cd $(BUILD_PATH)/gel && $(MAKE)
+	cd $(BUILD_PATH)/otawa && $(MAKE) 
+	cd $(BUILD_PATH)/otawa-sparc && $(MAKE) 
+	cd $(BUILD_PATH)/otawa-leon  && $(MAKE) 
 
-$(ARCH)-sim: lib
-	cd sim; $(MAKE)
+otawa-install:
+	cd $(BUILD_PATH)/otawa && $(MAKE) install
+	cd $(BUILD_PATH)/otawa-sparc && $(MAKE) install
+	cd $(BUILD_PATH)/otawa-leon  && $(MAKE) install
 
-include/$(ARCH)/config.h: config.tpl
-	test -d include/$(ARCH) || mkdir -p include/$(ARCH)
-	cp config.tpl include/$(ARCH)/config.h
 
-src/disasm.c: $(ARCH).irg
-	$(GLISS_PREFIX)/gep/gliss-disasm $< -o $@ -c
+#
+# Targets to build the Patmos OTAWA plugins
+#
 
-src/used_regs.c: $(ARCH).irg
-	$(GLISS_PREFIX)/gep/gliss-used-regs $< 
+config:
+	mkdir -p $(BUILD_PATH)/otawa-patmos
+	cd $(BUILD_PATH)/otawa-patmos && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config -DGLISS_PATH=$(GLISS_PATH) $(PATMOS_SOURCE_PATH)/otawa-patmos
+	mkdir -p $(BUILD_PATH)/patmos-wcet
+	cd $(BUILD_PATH)/patmos-wcet && cmake -DOTAWA_CONFIG=$(OTAWA_PATH)/bin/otawa-config $(PATMOS_SOURCE_PATH)/patmos-wcet
 
-distclean: clean
-	for d in $(SUBDIRS); do test -d $$d && (cd $$d; make distclean || exit 1); done
-	rm -rf $(DISTCLEAN)
+patmos:
+	cd $(PATMOS_SOURCE_PATH)/patmos && $(MAKE) WITH_DYNLIB=1 GLISS_PREFIX=$(GLISS_PATH)
+	cd $(BUILD_PATH)/otawa-patmos && $(MAKE)
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE)
 
-clean: only-clean
-	for d in $(SUBDIRS); do test -d $$d && (cd $$d; make clean || exit 1); done
+clean:
+	cd $(PATMOS_SOURCE_PATH)/patmos && $(MAKE) clean
+	cd $(BUILD_PATH)/otawa-patmos && $(MAKE) clean
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE) clean
 
-only-clean:
-	rm -rf $(CLEAN)
+install:
+	cd $(BUILD_PATH)/otawa-patmos && $(MAKE) install
+	cd $(BUILD_PATH)/patmos-wcet && $(MAKE) install
+
