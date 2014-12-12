@@ -1,0 +1,31 @@
+
+Makefile.cfg
+
+# Ignore hg checkouts
+gliss2
+elm
+gel
+otawa
+frontc
+orange
+ppc2
+sparc
+otawa-sparc
+otawa-leon
+tricore
+otawa-tricore
+
+# Ignore build directories
+build/
+out/
+patmos/disasm
+patmos/sim
+patmos/include
+patmos/src
+
+# Ignore generated files
+*.irg
+*.nml
+
+# Ignore temp files
+.*.swp

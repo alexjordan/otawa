@@ -1,0 +1,518 @@
+// canonicals
+canon s32 "_R"(u32)
+canon u32 "_S"(u32) 
+// We model predicate as int registers that only hold 0 or 1 here..
+canon u32 "_P"(u32) 
+canon u32 "_MCB"
+
+canon "_NOP"()
+canon "_BRANCH"(u32)
+canon "_TRAP"()
+canon "_CONT"()
+canon "_IF"(u32, u32, u32)
+canon "_LOAD"(u32, u32, u32)
+canon "_STORE"(u32, u32, u32)
+canon "_SCRATCH"(u32)
+canon "_SET"(u32, u32)
+canon "_SETI"(u32, s32)
+canon "_CMP"(u32, s32, s32)
+canon "_CMPU"(u32, u32, u32)
+canon "_ADD"(u32, u32, u32)
+canon "_SUB"(u32, u32, u32)
+canon "_SHL"(u32, u32, u32)
+canon "_SHR"(u32, u32, u32)
+canon "_ASR"(u32, u32, u32)
+canon "_NOT"(u32, u32)
+canon "_AND"(u32, u32, u32)
+canon "_OR"(u32, u32, u32)
+canon "_MUL"(s32, s32, s32)
+canon "_MULU"(u32, u32, u32)
+canon "_XOR"(u32, u32, u32)
+
+// condition codes
+canon u32 "_NO_COND"
+canon u32 "_EQ"
+canon u32 "_LT"
+canon u32 "_LE"
+canon u32 "_GE"
+canon u32 "_GT"
+canon u32 "_ANY_COND"
+canon u32 "_NE"
+canon u32 "_ULT"
+canon u32 "_ULE"
+canon u32 "_UGE"
+canon u32 "_UGT"
+
+// memory types
+canon u32 "_INT8"
+canon u32 "_INT16"
+canon u32 "_INT32"
+canon u32 "_UINT8"
+canon u32 "_UINT16"
+canon u32 "_UINT32"
+
+// special registers
+// SZ is modelled by the individual predicates
+macro SM = "_S"(1) 
+macro SL = "_S"(2) 
+macro SH = "_S"(3) 
+macro SS = "_S"(5) 
+macro ST = "_S"(6)
+// We model the offset registers as absolute addresses here,
+// not as offset to the base.
+macro SRB = "_S"(7) 
+macro SRO = "_S"(8) 
+macro SXB = "_S"(9) 
+macro SXO = "_S"(10)
+macro MCB = "_MCB"
+
+macro P0 = "_P"(0) 
+macro P1 = "_P"(1) 
+macro P2 = "_P"(2) 
+macro P3 = "_P"(3) 
+macro P4 = "_P"(4) 
+macro P5 = "_P"(5) 
+macro P6 = "_P"(6) 
+macro P7 = "_P"(7) 
+
+
+// operands
+let T1 = -1
+let T2 = -2
+let T3 = -3
+let T4 = -4
+macro RD = "_R"(rd.value)
+macro PD = "_P"(pd.value)
+macro PS = "_P"(ps.value)
+macro PS1 = "_P"(ps1.value)
+macro PS2 = "_P"(ps2.value)
+
+// operations
+macro NOP = "_NOP"()
+macro BRANCH(a) = "_BRANCH"(a)
+macro TRAP = "_TRAP"()
+macro CONT = "_CONT"()
+macro IF(c,s,j) = "_IF"(c,s,j)
+macro LOAD(d, addr, type) = "_LOAD"(d, addr, type)
+macro STORE(d, addr, type) = "_STORE"(d, addr, type)
+macro SCRATCH(d) = "_SCRATCH"(d)
+macro SET(d, s) = "_SET"(d, s)
+macro SETI(d, i) = "_SETI"(d, i)
+macro CMP(d, s1, s2) = "_CMP"(d, s1, s2)
+macro CMPU(d, s1, s2) = "_CMPU"(d, s1, s2)
+macro ADD(d, s1, s2) = "_ADD"(d, s1, s2)
+macro SUB(d, s1, s2) = "_SUB"(d, s1, s2)
+macro SHL(d, s1, s2) = "_SHL"(d, s1, s2)
+macro SHR(d, s1, s2) = "_SHR"(d, s1, s2)
+macro ASR(d, s1, s2) = "_ASR"(d, s1, s2)
+macro NOT(d, s) = "_NOT"(d, s)
+macro AND(d, s1, s2) = "_AND"(d, s1, s2)
+macro OR(d, s1, s2) = "_OR"(d, s1, s2)
+macro MUL(d, s1, s2) = "_MUL"(d, s1, s2)
+macro MULU(d, s1, s2) = "_MULU"(d, s1, s2)
+macro XOR(d, s1, s2) = "_XOR"(d, s1, s2)
+
+macro SHLI(d, s, i) = "_SETI"(T3, i); "_SHL"(d, s, T3)
+macro SHRI(d, s, i) = "_SETI"(T3, i); "_SHR"(d, s, T3)
+macro ASHRI(d, s, i) = "_SETI"(T3, i); "_ASR"(d, s, T3)
+macro ADDI(d, s, i) = "_SETI"(T3, i); "_ADD"(d, s, T3)
+macro SUBI(d, s, i) = "_SETI"(T3, i); "_SUB"(d, s, T3)
+macro ANDI(d, s, i) = "_SETI"(T3, i); "_AND"(d, s, T3)
+macro  ORI(d, s, i) = "_SETI"(T3, i);  "_OR"(d, s, T3)
+macro XORI(d, s, i) = "_SETI"(T3, i); "_XOR"(d, s, T3)
+
+// temporaries: T1-T2 used in ops, T3-T4 used in macros
+var t1[1, u32]
+var t2[1, u32]
+var t3[1, u32]
+var t4[1, u32]
+
+// Workaround for D-SPM address space aliasing: We map the D-SPM into
+// a separate address range in global memory for the data-flow analysis.
+// D-SPM can only accessed via lwl and swl, so there will be no issues with
+// other memory operations, but it may has to be taken into account if value-facts 
+// are provided/used.
+let SPM_BASE_ADDR   = 0x80000000
+let IODEV_BASE_ADDR = 0xf0000000
+
+extend reg_idx
+	value = i
+
+extend sreg_idx
+	value = i
+
+extend pred_idx
+	value = i
+
+extend npred_idx, gpred_idx
+	value = i
+
+extend ALU_op
+	opcode = opc
+
+extend ALU_extop
+	opcode = opc
+
+extend ALUc_op
+	opcode = opc
+
+extend ALUp_op
+	opcode = opc
+
+macro GET_REG(d, r) = \
+        if r.is_zero then \
+	  SETI(d, 0); \
+	else \
+	  SET(d, "_R"(r.value)); \
+	endif
+
+macro GET_PRED(d, p) = \
+        if p.negated then \
+	  if p.always_false then \
+	    SETI(d, 0); \
+	  else \
+	    XORI(d, "_P"(p.value), 1); \
+	  endif; \
+	else \
+	  if p.always_true then \
+	    SETI(d, 1); \
+	  else \
+            SET(d, "_P"(p.value)); \
+	  endif; \
+	endif
+
+macro SET_PRED(p, s, op) = SETI(p, 0); IF(op, s, 1); SETI(p, 1)
+
+
+// ---- All Predicated Instructions ----
+
+extend Pred_fmt
+	otawa_sem = {
+	  if !guard.always_true then
+	    GET_PRED(T2, guard);
+	    SETI(T1, 1);
+	    CMPU(T1, T2, T1);
+	    IF("_NE", T1, 1);
+	    CONT;
+	  endif;
+	  x.otawa_sem;
+	}
+
+
+// ---- ALU operations ----
+
+macro ALU_semop(opc, d, s1, s2) = \
+	  switch (opc) { \
+	    case 0: ADD(d, s1, s2); \
+	    case 1: SUB(d, s1, s2); \
+	    case 2: XOR(d, s1, s2); \
+	    case 3: SHL(d, s1, s2); \
+	    case 4: SHR(d, s1, s2); \
+	    case 5: ASR(d, s1, s2); \
+	    case 6:  OR(d, s1, s2); \
+	    case 7: AND(d, s1, s2); \
+	    case 11: OR(T3, s1, s2); NOT(d, T3); \
+	    case 12: SHLI(T4, s1, 1); ADD(d, T4, s2); \
+	    case 13: SHLI(T4, s1, 1); ADD(d, T4, s2); \
+	  }
+
+macro ALUc_semop(opc, p, s1, s2) = \
+        switch (opc) { \
+          case 0: CMP(T3, s1, s2); SET_PRED(p, T3, "_EQ"); \
+	  case 1: CMP(T3, s1, s2); SET_PRED(p, T3, "_NE"); \
+	  case 2: CMP(T3, s1, s2); SET_PRED(p, T3, "_LT"); \
+	  case 3: CMP(T3, s1, s2); SET_PRED(p, T3, "_LE"); \
+	  case 4: CMPU(T3, s1, s2); SET_PRED(p, T3, "_ULT"); \
+	  case 5: CMPU(T3, s1, s2); SET_PRED(p, T3, "_ULE"); \
+	  case 6: SETI(T4, 1); SHL(T3, T4, s2); AND(T3, s1, T3); \
+	          SETI(T4, 0); CMP(T3, T3, T4); SET_PRED(p, T3, "_NE"); \
+	}
+
+macro ALUp_semop(opc, p, p1, p2) = \
+        switch (opc) { \
+	  case 6:   OR(T3, p1, p2); SET(p, T3); \
+	  case 7:  AND(T3, p1, p2); SET(p, T3); \
+	  case 10: XOR(T3, p1, p2); SET(p, T3); \
+	}
+
+extend ALUi_fmt
+	otawa_sem = {
+	  if !rd.is_zero then
+	    GET_REG(T1, rs1);
+	    SETI(T2, imm12);
+	    ALU_semop(func.opcode, RD, T1, T2);
+	  endif;
+	}
+
+extend ALUl_fmt
+	otawa_sem = {
+	  if !rd.is_zero then
+	    GET_REG(T1, rs1);
+	    SETI(T2, imm32);
+	    ALU_semop(func.opcode, RD, T1, T2);
+	  endif;
+	}
+
+extend ALUr_fmt
+	otawa_sem = {
+	  if !rd.is_zero then
+	    GET_REG(T1, rs1);
+	    GET_REG(T2, rs2);
+	    ALU_semop(func.opcode, RD, T1, T2);
+	  endif;
+	}
+
+extend ALUm_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  GET_REG(T2, rs2);
+	  if func.is_unsigned then
+	    MULU(SL, T1, T2);
+	  else
+	    MUL(SL, T1, T2);
+	  endif;
+	  // For now, do not calculate the high word..
+	  SCRATCH(SH);
+	}
+
+extend ALUc_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  GET_REG(T2, rs2);
+	  ALUc_semop(func.opcode, PD, T1, T2);
+	}
+
+extend ALUci_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  SETI(T2, imm5);
+	  ALUc_semop(func.opcode, PD, T1, T2);
+	}
+
+extend ALUp_fmt
+	otawa_sem = {
+	  GET_PRED(T1, ps1);
+	  GET_PRED(T2, ps2);
+	  ALUp_semop(func.opcode, PD, T1, T2);
+	}
+
+extend ALUb_fmt
+	otawa_sem = {
+	  // rd = (rs1 & ~(1 << imm5)) | (ps << imm5)
+	  SETI(T1, 1);
+	  SETI(T2, imm5);
+	  SHL(T1, T1, T2);
+	  NOT(T1, T1);
+	  GET_REG(T2, rs1);
+	  AND(T1, T1, T2);
+	  GET_PRED(T4, ps);
+	  SHL(T4, T4, T2);
+	  OR(RD, T1, T4);
+	}
+
+
+// ---- Special Instructions -----
+
+extend SPCw_fmt
+	otawa_sem = {
+	  // Just waits..
+	}
+
+extend SPCt_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  if sd.is_predreg then
+	    SETI(T4, 0);
+	    // Restore the predicates from rs1
+	    SETI(P0, 0);
+	    // Set p1
+	    SHRI(T2, T1, 1);
+	    ANDI(P1, T2, 0x1);
+	    // Set p2
+	    SHRI(T2, T1, 2);
+	    ANDI(P2, T2, 0x1);
+	    // Set p3
+	    SHRI(T2, T1, 3);
+	    ANDI(P3, T2, 0x1);
+	    // Set p4
+	    SHRI(T2, T1, 4);
+	    ANDI(P4, T2, 0x1);
+	    // Set p5
+	    SHRI(T2, T1, 5);
+	    ANDI(P5, T2, 0x1);
+	    // Set p6
+	    SHRI(T2, T1, 6);
+	    ANDI(P6, T2, 0x1);
+	    // Set p7
+	    SHRI(T2, T1, 7);
+	    ANDI(P7, T2, 0x1);
+	  else
+	    SET("_S"(sd.value), T1);
+	  endif;
+	}
+
+extend SPCf_fmt
+	otawa_sem = {
+	  if ss.is_predreg then
+	    SETI(RD, 0);
+	    // Store p1
+	    SHLI(T1, P1, 1);
+	    OR(RD, RD, T1);
+	    // Store p2
+	    SHLI(T1, P2, 2);
+	    OR(RD, RD, T1);
+	    // Store p3
+	    SHLI(T1, P3, 3);
+	    OR(RD, RD, T1);
+	    // Store p4
+	    SHLI(T1, P4, 4);
+	    OR(RD, RD, T1);
+	    // Store p5
+	    SHLI(T1, P5, 5);
+	    OR(RD, RD, T1);
+	    // Store p6
+	    SHLI(T1, P6, 6);
+	    OR(RD, RD, T1);
+	    // Store p7
+	    SHLI(T1, P7, 7);
+	    OR(RD, RD, T1);
+	  else
+	    SET(RD, "_S"(ss.value));
+	  endif;
+	}
+
+
+// ---- Load and Store ----
+
+macro MEM_ADDR(d, ra, imm) = \
+	SETI(d, imm); \
+	if func.is_word then \
+	  SHLI(d, d, 2); \
+	else \
+	  if func.is_half then \
+	    SHLI(d, d, 1); \
+	  endif; \
+	endif; \
+	ADD(d, d, ra); \
+	if func.is_stack then \
+	  ADD(d, d, ST); \
+	endif; \
+	if func.is_local then \
+	  // We could also use SETP here to map local accesses to \
+	  // a different page. \
+	  SETI(T4, IODEV_BASE_ADDR); \
+	  CMPU(T4, T4, d); \
+	  IF("_ULE", T4, 1); \
+	  ADDI(d, d, SPM_BASE_ADDR); \
+	endif
+
+macro get_mem_type(func) = \
+	if func.is_word then \
+	  "_UINT32" \
+	else \
+	  if func.is_half then \
+	    if func.is_unsigned then "_UINT16" else "_INT16" endif \
+          else \
+	    if func.is_unsigned then "_UINT8" else "_INT8" endif \
+	  endif \
+	endif
+
+extend LDT_fmt
+	otawa_sem = {
+	  GET_REG(T1, ra);
+	  MEM_ADDR(T2, T1, imm7);
+	  LOAD(RD, T2, get_mem_type(func));
+	}
+
+extend STT_fmt
+	otawa_sem = {
+	  GET_REG(T1, ra);
+	  MEM_ADDR(T2, T1, imm7);
+	  GET_REG(T1, rs);
+	  STORE(T1, T2, get_mem_type(func));
+	}
+
+
+// ---- Stack Control ----
+
+extend STC_op
+	opcode = opc
+
+// We only track ST pointer for now..
+macro STC_semop(opc, s) = \
+        switch (opc) { \
+	  case 0: SUB(ST, ST, s); SCRATCH(SS); \
+	  case 1: SCRATCH(SS); \
+	  case 2: ADD(ST, ST, s); SCRATCH(SS); \
+	  case 4: SCRATCH(SS); \
+	}
+
+extend STCi_fmt
+	otawa_sem = {
+	  SETI(T1, imm18);
+	  SHLI(T1, T1, 2);
+	  STC_semop(func.opcode, T1);
+	}
+
+extend STCr_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  STC_semop(func.opcode, T1);
+	}
+
+
+// ---- Control Flow ----
+
+macro CFL_semop(func, a, b) = \
+	if func.is_trap then \
+	  SET(SXB, MCB); \
+	  SCRATCH(SXO); \
+	  TRAP; \
+	else \
+	  if func.is_call then \
+	    SET(SRB, MCB); \
+	    // We do not calculate the return address for now \
+	    SCRATCH(SRO); \
+	  endif; \
+	  BRANCH(a); \
+	endif; \
+	if !func.is_local then \
+	  SET(MCB, b); \
+	endif
+
+extend CFLi_fmt
+	otawa_sem = {
+	  SETI(T1, imm22);
+	  SETI(T2, 2);
+	  SHL(T2, T1, T2);
+	  if func.is_PCRel then
+	    ADDI(T1, T2, __IADDR);
+	  endif;
+	  CFL_semop(func, T1, T1);
+	}
+
+extend CFLri_fmt
+	otawa_sem = {
+	  if func.is_xret then
+	    SET(MCB, SXB);
+	    BRANCH(SXO);
+	  else
+	    SET(MCB, SRB);
+	    BRANCH(SRO);
+	  endif;
+	}
+
+extend CFLrs_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  CFL_semop(func, T1, T1);
+	}
+
+extend CFLrt_fmt
+	otawa_sem = {
+	  GET_REG(T1, rs1);
+	  GET_REG(T2, rs2);
+	  ADD(T2, T1, T2);
+	  CFL_semop(func, T2, T1);
+	}
+

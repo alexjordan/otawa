@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<processor class="otawa::hard::Processor">
+	<arch>patmos</arch>
+	<model>patmos</model>
+	
+	<stages>
+		
+		<stage id="FE">
+			<name>FE</name>
+			<width>2</width>
+			<type>FETCH</type>
+		</stage>
+
+		<stage id="DE">
+			<name>DE</name>
+			<width>2</width>
+			<type>LAZY</type>
+		</stage>
+
+		<stage id="EX">
+			<name>EX</name>
+			<width>2</width>
+			<type>EXEC</type>
+			<ordered>true</ordered>
+			<fus>
+				<fu id="ALU">
+					<name>ALU</name>
+					<width>2</width>
+					<latency>1</latency>
+				</fu>
+			</fus>
+			<dispatch>
+				<inst>
+					<type/>
+					<fu ref="ALU"/>
+				</inst>
+			</dispatch>
+
+		</stage>
+
+		<stage id="MEM">
+			<name>MEM</name>
+			<width>2</width>
+			<type>LAZY</type>
+		</stage>
+
+		<stage id="CM">
+			<name>CM</name>
+			<width>2</width>
+			<type>COMMIT</type>
+		</stage>
+	</stages>
+
+</processor>

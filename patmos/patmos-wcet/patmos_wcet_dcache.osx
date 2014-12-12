@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<otawa-script
+    xmlns:xi="http://www.w3.org/2001/XInclude"
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+
+<name>Patmos</name>
+
+<info>
+	<h1>Patmos</h1>
+	
+	<h2>Description</h2>
+	<p>This is the OTAWA implementation of WCET computation for T-CREST / Patmos processor.
+	Refer to <a href="http://patmos.compute.dtu.dk/">the Patmos documentation page</a> and 
+	<a href="http://www.t-crest.org/">the T-CREST webpage</a> for more details.</p>
+	
+	<h2>Implementation State</h2>
+	List of what is implemented so far:
+	<ul>
+	</ul>
+</info>
+
+
+<id>
+	<arch>patmos</arch>
+	<abi>eabi</abi>
+	<mach>patmos</mach>
+</id>
+
+
+<configuration>
+</configuration>
+
+<platform>
+	<xi:include href="patmos_wcet/pipeline.xml"/>
+	<xi:include href="patmos_wcet/memory.xml"/>
+	<xi:include href="patmos_wcet/caches.xml"/>
+</platform>
+
+<script>
+	<step require="otawa::VIRTUALIZED_CFG_FEATURE"/>
+	<step require="otawa::DELAYED_CFG_FEATURE"/>
+	<step processor="tcrest::patmos_wcet::BBTimer">
+		<config name="otawa::GRAPHS_OUTPUT_DIRECTORY" value="out"/>
+	</step>
+
+	<step require="otawa::LOOP_INFO_FEATURE"/>
+
+	<!-- WCET computation -->
+	<step require="tcrest::patmos::METHOD_CACHE_CONTRIBUTION_FEATURE"/>
+	<step require="otawa::STACK_ANALYSIS_FEATURE"/>
+	<step require="otawa::dcache::WCET_FUNCTION_FEATURE"/>
+	<step require="otawa::ipet::WCET_FEATURE"/>
+	
+	<step processor="otawa::ipet::WCETCountRecorder"/>
+	<step processor="otawa::display::CFGOutput">
+		<!--config name="otawa::display::CFGOutput::PATH" value="wcet.txt"/-->
+	</step>
+</script>
+
+</otawa-script>
+	
