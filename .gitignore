@@ -29,6 +29,9 @@ install_manifest.txt
 *.cmo
 .dep/
 
+local/
+*.dot
+
 #==============================================================================#
 # otawa
 #==============================================================================#
@@ -52,4 +55,45 @@ gliss2/irg/parser.output
 gliss2/irg/print_irg
 gliss2/optirg/formatlexer.ml
 gliss2/optirg/optirg
+
+config.h
+*_lexer.cc
+*_parser.cpp
+*_parser.h
+
+elm/**/Makefile
+elm/tools/elm-plugin
+
+gel/**/Makefile
+
+gel/test/test_stabs
+gel/tools/gel-file
+gel/tools/gel-im
+gel/tools/gel-line
+gel/tools/gel-prog
+gel/tools/gel-sect
+gel/tools/gel-sym
+
+otawa/src/config/otawa-config
+otawa/src/dumpcfg/dumpcfg
+otawa/src/mkff/mkff
+otawa/src/odec/odec
+otawa/src/odfa/odfa
+otawa/src/odisasm/odisasm
+otawa/src/oipet/oipet
+otawa/src/opcg/opcg
+otawa/src/ostat/ostat
+otawa/src/owcet/owcet
+otawa/src/ppc2/otawa_kind.h
+otawa/src/ppc2/otawa_pred.h
+otawa/src/ppc2/otawa_sem.h
+otawa/src/ppc2/otawa_target.h
+otawa/src/ppc2/otawa_used_regs.h
+
+ppc2/disasm/
+ppc2/include/
+ppc2/ppc.irg
+ppc2/ppc.nml
+ppc2/sim/
+ppc2/src/
 
