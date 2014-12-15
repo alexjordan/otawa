@@ -35,7 +35,31 @@
 
 #define MUST_DEBUG(x)	//cerr << x << io::endl
 
-namespace otawa { namespace dcache {
+ENUM(otawa::dcache::data_fmlevel_t)
+ENUM_BEGIN(otawa::dcache::data_fmlevel_t)
+    VALUE(otawa::dcache::DFML_INNER),
+    VALUE(otawa::dcache::DFML_OUTER),
+    VALUE(otawa::dcache::DFML_MULTI),
+    VALUE(otawa::dcache::DFML_NONE)
+ENUM_END
+
+namespace otawa { 
+
+template<>
+void Identifier<dcache::data_fmlevel_t>::fromString (PropList &props, const string &str) const {
+        value_t *val = type_info<dcache::data_fmlevel_t>::values();
+        while(val->name()) {
+                if(val->name() == str) {
+                        this->set(props, (dcache::data_fmlevel_t)val->value());
+                        return;
+                }
+                val++;
+        }
+        throw io::IOException("value does not match any enumerated value");
+}
+
+
+  namespace dcache {
 
 /**
  * @class MUSTProblem
