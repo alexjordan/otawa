@@ -48,8 +48,12 @@
 	<!-- WCET computation -->
 	<step require="tcrest::patmos::METHOD_CACHE_CONTRIBUTION_FEATURE"/>
 	<step require="otawa::STACK_ANALYSIS_FEATURE"/>
-	<step require="otawa::dcache::WCET_FUNCTION_FEATURE"/>
-	<step require="otawa::ipet::WCET_FEATURE"/>
+    <step require="otawa::dcache::MAY_ACS_FEATURE"/>
+    <step require="otawa::dcache::CATEGORY_FEATURE">
+      <config name="otawa::dcache::FIRSTMISS_LEVEL" value="DFML_MULTI" />
+    </step>
+    <step require="otawa::dcache::WCET_FUNCTION_FEATURE"/>
+    <step require="otawa::ipet::WCET_FEATURE"/>
 	
 	<step processor="otawa::ipet::WCETCountRecorder"/>
 	<step processor="otawa::display::CFGOutput">
