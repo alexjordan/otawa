@@ -38,18 +38,34 @@ public:
 	virtual kind_t kind(void) { return IS_ALU | IS_INT; }
 	virtual Address address (void) const { return _addr; }
 	virtual t::uint32 size(void) const { return _size; }
+
+	// well, assume that the NOP does not read any registers.
+    // THIS MIGHT NOT BE SAFE!
+    const elm::genstruct::Table<hard::Register *>& readRegs(void) {
+        return noRegisters;
+    }
+
+    // well, assume that the NOP does not write to any registers.
+    // THIS MIGHT NOT BE SAFE!
+    const elm::genstruct::Table<hard::Register *>& writtenRegs(void) {
+        return noRegisters;
+    }
+
 private:
+    static const elm::genstruct::Table<hard::Register *> noRegisters;
+
 	Address _addr;
 	ot::size _size;
 };
 
+const elm::genstruct::Table<hard::Register *> NOPInst::noRegisters;
 
 class DelayedCleaner: public elm::Cleaner {
 public:
 
 	inhstruct::DLList *allocList(void) {
-		lists.add(inhstruct::DLList());
-		return &lists[lists.count() - 1];
+		lists.add(new inhstruct::DLList());
+		return lists[lists.count() - 1];
 	}
 
 	NOPInst *allocNop(Address addr, ot::size size) {
@@ -60,15 +76,16 @@ public:
 	}
 
 private:
-	genstruct::FragTable<inhstruct::DLList> lists;
+	genstruct::FragTable<inhstruct::DLList*> lists;
 	genstruct::FragTable<NOPInst> nops;
 };
 
 
 typedef enum action_t {
 	DO_NOTHING = 0,
-	DO_SWALLOW,
-	DO_INSERT
+    DO_SWALLOW,     // delayed branch, duplicate fall-through successors
+    DO_INSERT,      // insert NOP on fall-through, delayed branch on taken-edge
+    DO_NOPS_TAKEN   // insert NOPs on taken-edge
 } action_t;
 static Identifier<action_t> ACTION("", DO_NOTHING);
 static Identifier<BasicBlock *> DELAYED_TARGET("", 0);
@@ -151,6 +168,13 @@ BasicBlock *DelayedBuilder::makeNOp(Inst *inst, int n) {
 		NOPInst *nop = cleaner->allocNop(inst->address(), inst->size());
 		nop->append(*list);
 
+        // update size
+        size += inst->size();
+
+        // keep reference to first NOP.
+        if (!first)
+          first = nop;
+
 		// go to next instruction
 		if(!inst->nextInst())
 			inst = workspace()->process()->findInstAt(inst->address());
@@ -173,16 +197,22 @@ BasicBlock *DelayedBuilder::makeNOp(Inst *inst, int n) {
  * @ref otawa::DELAYED_FEATURE to transform the CFG to let other processor
  * ignore the delayed branch effects.
  *
- * If a branch is denoted as @ref otawa::DELAYED_ALWAYS, the first instruction
+ * If a branch is denoted as @ref otawa::DELAYED_Always, the first instruction
  * of the basic block in sequence is moved in the branch basic block (just after
  * the branch).
  *
- * If a branch is denoted as @ref otawa::DELAYED_TAKEN, a basic block is inserted
+ * If a branch is denoted as @ref otawa::DELAYED_Taken, a basic block is inserted
  * on the taken edge containing only the first instruction of the basic block
  * in sequence and a basic block containing a NOP instruction is inserted in
  * the edge of sequential transfer of control (to take into account the delayed
  * instruction effect on memory hierarchy).
  * 
+ * If a branch is marked with @ref otawa:DELAYED_Stall_Taken, a basic blocks are
+ * created for all CFG successors except the fall-through (NOT_TAKEN) containing
+ * NOP instructions. This corresponds to a simple branch predictor always
+ * predicting NOT_TAKEN and a pipeline that stalls in case of a
+ * miss-predication.
+ *
  * @par Required Features
  * @li @ref COLLECTED_CFG_FEATURE
  * @li @ref DELAYED_FEATURE
@@ -267,6 +297,9 @@ void DelayedBuilder::mark(CFG *cfg) {
 				TO_DELAY(next(control)) = count(control);
 				ACTION(bb) = DO_INSERT;
 				break;
+            case DELAYED_Stall_Taken:
+                TO_DELAY(next(control)) = count(control);
+                ACTION(bb) = DO_NOPS_TAKEN;
 			}
 		}
 	}
@@ -439,7 +472,7 @@ void DelayedBuilder::buildBB(CFG *cfg) {
 
 			// start of BB is delayed instructions?
 			int dcnt = TO_DELAY(first);
-			if(dcnt) {
+			if(dcnt && ACTION(bb) == DO_INSERT) {
 				if(logFor(LOG_BB))
 					log << "\t\t" << *bb << " reduced due to " << dcnt << " delayed instruction\n";
 
@@ -463,6 +496,12 @@ void DelayedBuilder::buildBB(CFG *cfg) {
 				size -= this->size(first, dcnt);
 				first = next(first, dcnt);
 			}
+			else if (ACTION(bb) == DO_NOPS_TAKEN) {
+              int ecnt = count(bb->controlInst());
+              ot::size esize = this->size(bb->controlInst(), ecnt);
+              if(logFor(LOG_BB))
+                  log << "\t\t" << *bb << " on taken followed by " << ecnt << " nop instruction(s) (" << esize << " bytes)\n";
+            }
 
 			// perform swallowing
 			if(ACTION(bb) == DO_SWALLOW) {
@@ -561,6 +600,47 @@ void DelayedBuilder::buildEdges(CFG *cfg) {
 				}
 			}
 			break;
+
+        // insert NOPs on taken edge
+        case DO_NOPS_TAKEN:
+            // get count of delayed instructions
+            Inst *first = bb->firstInst();
+            ASSERT(first);
+            int dcnt = TO_DELAY(first);
+
+            for(BasicBlock::OutIterator edge(bb); edge; edge++) {
+                // insert NOPs on all edges except the fall-through (not taken)
+                switch(edge->kind()) {
+                case Edge::VIRTUAL:
+                  ASSERT(false);
+                case Edge::NOT_TAKEN:
+                    cloneEdge(edge, vbb, edge->kind());
+                    break;
+                case Edge::TAKEN:
+                case Edge::CALL:
+                case Edge::VIRTUAL_CALL:
+                case Edge::VIRTUAL_RETURN:
+                case Edge::EXN_CALL:
+                case Edge::EXN_RETURN:
+                    {
+                        BasicBlock *nop = makeNOp(next(bb->controlInst()), dcnt);
+                        makeEdge(vbb, nop, edge->kind());
+                        BasicBlock *vtarget = map.get(edge->target(), 0);
+
+                        // simple not-taken edge
+                        if(vtarget)
+                            makeEdge(nop, vtarget, Edge::NOT_TAKEN);
+
+                        // relink successors of removed mono-instruction BB
+                        else
+                            for(BasicBlock::OutIterator out(edge->target()); out; out++)
+                                cloneEdge(out, nop, out->kind());
+
+                        break;
+                    }
+                }
+            }
+            break;
 		}
 	}
 }

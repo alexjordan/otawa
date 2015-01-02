@@ -31,7 +31,8 @@ namespace otawa {
 typedef enum delayed_t {
 	DELAYED_None = 0,
 	DELAYED_Always = 1,
-	DELAYED_Taken = 2
+    DELAYED_Taken = 2,
+    DELAYED_Stall_Taken = 3
 } delayed_t;
 
 // DelayedInfo class
