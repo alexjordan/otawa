@@ -7,12 +7,8 @@ let DELAYED_CACHE = 3
 
 extend CFLi_fmt, CFLrs_fmt, CFLrt_fmt
 	otawa_delayed =
-		if d then
-			if func.is_local then DELAYED_LOCAL
-			else DELAYED_CACHE endif
-		else
-			DELAYED_NONE
-		endif
+        if func.is_local then DELAYED_LOCAL
+        else DELAYED_CACHE endif
 
 extend CFLri_fmt
-	otawa_delayed = if d then DELAYED_CACHE else DELAYED_NONE endif
+	otawa_delayed = DELAYED_CACHE
