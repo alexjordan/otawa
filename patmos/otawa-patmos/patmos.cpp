@@ -51,6 +51,10 @@ using namespace otawa::hard;
 
 namespace otawa { namespace patmos {
 
+  /// Flag indicating a delayed branch.
+  /// \see kind.nmp
+  static const int IS_DELAYED  = 0x01000000;
+
 /**
  * Register banks.
  */
@@ -199,8 +203,14 @@ public:
 
 	// DelayedInfo implementation
 	virtual delayed_t type(Inst *inst) {
-		if(inst->isControl())
+		if(inst->kind() & IS_DELAYED) {
+            assert(inst->isControl());
 			return otawa::DELAYED_Always;
+        }
+        else if(inst->isControl()) {
+             assert(!(inst->kind() & IS_DELAYED));
+            return otawa::DELAYED_Stall_Taken;
+        }
 		else
 			return otawa::DELAYED_None;
 	}
