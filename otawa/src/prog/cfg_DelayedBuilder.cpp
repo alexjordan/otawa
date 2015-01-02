@@ -497,7 +497,7 @@ void DelayedBuilder::buildBB(CFG *cfg) {
 				first = next(first, dcnt);
 			}
 			else if (ACTION(bb) == DO_NOPS_TAKEN) {
-              int ecnt = count(bb->controlInst());
+              int ecnt = TO_DELAY(next(bb->controlInst()));
               ot::size esize = this->size(next(bb->controlInst()), ecnt);
               if(logFor(LOG_BB))
                   log << "\t\t" << *bb << " on taken followed by " << ecnt << " nop instruction(s) (" << esize << " bytes)\n";
@@ -604,8 +604,14 @@ void DelayedBuilder::buildEdges(CFG *cfg) {
         // insert NOPs on taken edge
         case DO_NOPS_TAKEN:
             // get count of delayed instructions
-            Inst *first = bb->firstInst();
+            Inst *control = bb->controlInst();
+            ASSERT(control);
+
+            // store first instruction in delay slots
+            Inst *first = next(control);
             ASSERT(first);
+
+            // get number of stalls needed
             int dcnt = TO_DELAY(first);
 
             for(BasicBlock::OutIterator edge(bb); edge; edge++) {
@@ -623,7 +629,7 @@ void DelayedBuilder::buildEdges(CFG *cfg) {
                 case Edge::EXN_CALL:
                 case Edge::EXN_RETURN:
                     {
-                        BasicBlock *nop = makeNOp(next(bb->controlInst()), dcnt);
+                        BasicBlock *nop = makeNOp(first, dcnt);
                         makeEdge(vbb, nop, edge->kind());
                         BasicBlock *vtarget = map.get(edge->target(), 0);
 
