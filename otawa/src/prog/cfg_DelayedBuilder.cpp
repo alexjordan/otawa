@@ -498,7 +498,7 @@ void DelayedBuilder::buildBB(CFG *cfg) {
 			}
 			else if (ACTION(bb) == DO_NOPS_TAKEN) {
               int ecnt = count(bb->controlInst());
-              ot::size esize = this->size(bb->controlInst(), ecnt);
+              ot::size esize = this->size(next(bb->controlInst()), ecnt);
               if(logFor(LOG_BB))
                   log << "\t\t" << *bb << " on taken followed by " << ecnt << " nop instruction(s) (" << esize << " bytes)\n";
             }
