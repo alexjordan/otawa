@@ -23,12 +23,42 @@ DRYRUN=false
 VERBOSE=false
 ALLTARGETS="deps otawa patmos ppc2"
 
+#
+# Note: This function is only safe to use when the path exists.
+# When using for build paths, make sure it has been created first.
+#
+function abspath() {
+    local path=$1
+    local pwd_restore="$(pwd)"
+
+    # readlink -f does not work on OSX, so we do this manually
+    local dir=$(dirname "$path")
+    if [ -d "$dir" ]; then
+	cd "$dir" > /dev/null
+	path=$(basename "$path")
+	# follow chain of symlinks
+	while [ -L "$path" ]; do
+	    path=$(readlink "$path")
+	    cd $(dirname "$path") > /dev/null
+	    path=$(basename "$path")
+	done
+	echo "$(pwd -P)/$path"
+	cd "$pwd_restore" > /dev/null
+    elif [[ "$BUILDDIR_SUFFIX" =~ ^/ ]]; then
+	echo $path
+    else
+	echo "Trying to resolve non-existent relative path $path, don't want to use PWD."
+	exit 1
+    fi
+}
+
 function usage() {
   cat <<EOT
-  Usage: $0 [-dvh] <targets>
+  Usage: $0 [-dvh] [-i <install_dir>] <targets>
 
     -d		Dryrun, just show what would be executed
     -h		Show this help
+    -i <dir>	Set the install dir
     -r		Rerun cmake configure
     -v		Show command that are executed
 
@@ -79,10 +109,11 @@ do_install() {
 	run make install
 }
 
-while getopts ":dvhr" opt; do
+while getopts ":dvhi:r" opt; do
   case $opt in
     d) DRYRUN=true; VERBOSE=true ;;
     h) usage; exit 0 ;;
+    i) INSTALL_DIR="$(abspath $OPTARG)" ;;
     r) DO_RECONFIGURE=true ;;
     v) VERBOSE=true ;;
     :)
