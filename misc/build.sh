@@ -40,6 +40,16 @@ function usage() {
 EOT
 }
 
+function find_bins() {
+  for i in $*; do
+    which $i > /dev/null 2>&1
+    if [ $? -ne 0 ] ; then
+      echo "error: required program not found: $i";
+      exit 1;
+    fi
+  done;
+}
+
 run() {
     if [ "$VERBOSE" == "true" ]; then
         echo "$@"
@@ -93,6 +103,9 @@ else
 	BUILD_TARGETS=$@
 	echo "** Building targets: $BUILD_TARGETS"
 fi
+
+# check if required programs are installed.
+find_bins ocamllex ocamlyacc ocamlc
 
 # build gliss2
 if should_build_target deps; then

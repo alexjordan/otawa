@@ -104,7 +104,12 @@ endif()
 if(LP_SOLVE5_LIB)
 	message(STATUS "lp_solve5 library found at ${LP_SOLVE5_LIB}")
 else()
-	message(STATUS "lp_solve5 library not found")
+	message(FATAL_ERROR "lp_solve5 library not found")
+endif()
+
+find_path(LP_SOLVE5_INCLUDE_DIR NAMES lpsolve/lp_lib.h HINTS "${LP_SOLVE5_PATH}/include")
+if (NOT LP_SOLVE5_INCLUDE_DIR)
+	message(FATAL_ERROR "lp_solve5 header not found")
 endif()
 
 #if(UNIX OR APPLE OR MINGW_LINUX)

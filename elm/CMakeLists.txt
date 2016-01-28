@@ -56,6 +56,13 @@ else()
 	set(LIBXSLT ${LIBXSLT_FOUND})
 endif()
 
+if (NOT LIBXML2)
+  message(FATAL_ERROR "libxml library not found.")
+endif()
+
+if (NOT LIBXSLT)
+  message(FATAL_ERROR "libxslt library not found.")
+endif()
 
 # check for thread and socket
 if(NOT(WIN32) AND NOT(WIN64) AND NOT(APPLE))
